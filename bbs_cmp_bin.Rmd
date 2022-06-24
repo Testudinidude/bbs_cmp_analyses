@@ -1,0 +1,1859 @@
+---
+title: "Breeding Bird Surveys - Cleveland Metroparks"
+author: "Nathan W. Byer"
+date: "5/16/2022"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    fig_width: 6
+    fig_height: 4
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(width=300)
+```
+
+```{r, echo = FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+library(dplyr)
+library(tidyverse)
+library(vegan)
+library(caret)
+library(lubridate)
+library(spOccupancy)
+library(vegan)
+library(raster)
+library(dismo)
+library(terra)
+library(sp)
+library(rgdal)
+library(gstat)
+library(broom)
+library(shiny)
+library(sp)
+library(ggplot2)
+library(RColorBrewer)
+library(rgdal)
+library(broom)
+library(AICcmodavg)
+library(indicspecies)
+library(lme4)
+```
+
+# The dataset
+
+Tim Krynak, Erik Shaffer, Jennifer Brumsfield, and other Cleveland Metroparks and affiliated colleagues conducted Breeding Bird Surveys (BBS) at a total of 211 routes between 2017 and 2021. 164 of these routes overlapped with long-term vegetation monitoring efforts through the Cleveland Metroparks Plant Community Assessment Program (PCAP). This provided an excellent opportunity to explore the potential relationships between vegetative composition, landscape structure, and breeding bird ecology and community composition. 
+
+# Initial processing
+
+First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time. 
+
+```{r}
+CMP_bbs_pcap_join<-read.csv("CMP_bbs_pcapjoin.csv",header=T)
+CMP_bbs_pcap_join_pcaponly<-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),]
+
+datetime<-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format="%m/%d/%Y %H:%M")
+hist(datetime,breaks="months")
+
+```
+
+Next, we need to start grouping this dataset for downsteram analysis. This involves summarizing counts of each species for each plot. We also replace any NA values in the data frame with zeroes - this will be important for downstream applications, as we want to distinguish between unobserved species at a plot and check (typically coded 0s) and checks that were "skipped" (NAs).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+CMP_bbs_pcap_join_pcaponly_pcapsum<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(simp_plot, reservatio,species_4_) %>%
+  summarise(n=n(),longitude=mean(xcoord), latitude=mean(ycoord),vibifq=mean(vibi_fq),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
+            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
+            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
+            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
+            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
+            sens_rel=mean(sensitive_rel_cov_metric_value),
+            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
+            tol_rel=mean(tolerant_rel_cov_metric_value),
+            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
+            inv=mean(invasive_graminoids_metric_value),
+            small_tree=mean(small_tree_metric_value),
+            subcanopy=mean(subcanopy_iv),
+            canopy=mean(canopy_iv.1)
+            ) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0)
+
+CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_pcapsum,var="simp_plot")
+
+```
+
+We can also take a look at this dataset to ensure that it is what we expect.
+
+```{r}
+head(CMP_bbs_pcap_join_pcaponly_pcapsum)
+```
+
+This is a pretty unwieldly dataset at present - we have 164 rows (representing our BBS/PCAP plots) and 131 columns. Out of those 131 columns, 104 are unique species (designated with four-letter codes), so most of the first 27 covariates are essentially our "predictors" - in this case, our PCAP data.
+
+Let's do a bit more processing on this dataset to get it in shape for downstream analyses. First, we will separate out our bird community data.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+birdcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,27:(ncol(CMP_bbs_pcap_join_pcaponly_pcapsum)-1)]
+
+birdcomm[is.na(birdcomm)] <- 0
+
+```
+
+Next, we separate out our PCAP data. 
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,4:25]
+
+```
+
+Since we are using the PCAP dataset as predictors here, we should likely check for correlations between these covariates. I have selected a (semi-)arbitrary cut-off of 0.6 to identify covariates as correlated; we then drop any covariates that are likely redundant.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+vegecomm_cor<-cor(vegecomm)
+
+set.seed(12345)
+corvar<-findCorrelation(vegecomm_cor,cutoff=0.6)
+
+vegecomm_drop<-vegecomm[,-corvar]
+```
+
+Now, we have:
+
+a) a vegecomm dataset - which representing PCAP measurements for each of the 164 BBS/PCAP plots.
+b) a birdcomm dataset - representing presence/absence of each bird species for each survey in each plot.
+
+Note that we are not explicitly considering differences in bird counts (or occupancy, or detectability) through time at this point - we will get to that later. For now, we just want to explore broad associations between these two datasets! 
+
+Note as of 6/13/2022 - we will also want to only work with only binary data. 
+
+# Community analyses
+
+ When working with datasets like these, we first have to acknowledge that these datasets are multivariate - with many possible predictor covariates (for example, plot-level characteristics) and many possible response covariates (for example, presence/absence of species in a plot). Fortunately, community ecology as a field has developed a number of standard approaches for exploring multivariate datasets, of which the most common is (arguably!) ordination. In essence, ordination techniques try to shrink down highly multidimensional datasets into a more manageable number of dimensions - often just a handful (and for initial plotting, typically just two). There are many, many possible ordination tools available for exploring community ecological datasets, and we will explore a few. 
+
+## unconstrained ordination
+
+In this section, we will be exploring ways of exploring the bird dataset on its own - basically, without any predictors. 
+
+First, we must reclassify our bird community data onto a binary scale - ranging from 0 (no detection) to 1 (detection).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+birdcomm_bin<-birdcomm
+
+birdcomm_bin<- birdcomm_bin %>% mutate_if(is.numeric, ~1 * (. >= 1))
+
+```
+
+One of the most common approaches for unconstrained ordination is called Principal Components Analysis (PCA). I have illustrated two approaches for this below - using either the prcomp() function or vegan's rda() function (which we will use a bit more below!).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+PCA.res<-prcomp(birdcomm_bin, scale=T)
+
+biplot(PCA.res)
+title("PCA (prcomp version)")
+```
+
+Personally, I find rda() to be much easier to use, so I tend to use it preferentially. Here is a slightly more complicated plot compared to the above - this time with convex hulls and points colored by reservation.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+reserv<-factor(toupper(CMP_bbs_pcap_join_pcaponly_pcapsum$reservatio))
+colpal_reserv<-rainbow(length(levels(reserv)))
+
+p_unconc<-rda(birdcomm_bin,scale=T)
+
+PCAscores <- scores(p_unconc, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("site") 
+
+PCAvect <- scores(p_unconc, display = "species") %>% 
+  as.data.frame()
+
+reservplot<-ordiplot(p_unconc,scaling=3,type="n")
+points(reservplot, "sites",pch=21, col=colpal_reserv[reserv])
+
+
+ordihull(reservplot,groups = reserv, col=colpal_reserv, lwd=3)
+title("PCA (vegan rda version)")
+legend(x="right", legend=levels(reserv), col=colpal_reserv,pch = 1,cex=0.5) 
+
+```
+
+while a bit hard to interpret, plots within Rocky River (RR) seem to be the most variable - and it might be that we see higher diversity in that area. We will see as we proceed if that is true.
+
+
+
+### metric multidimensional scaling (Principal Coordinates Analysis)
+
+You can think of this as a distance-based analog to PCA. 
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+bird_pcoa<-capscale(birdcomm_bin~1,distance="bray")
+
+plot(bird_pcoa,type="n",main="PCoA") 
+
+text(bird_pcoa,display="species",col="red",cex=0.6) 
+
+points(bird_pcoa,display="sites",pch=16) #adds filled circles for sites
+
+
+# envfit() takes the output of metaMDS() and the species matrix you created
+fitpcoa <- envfit(bird_pcoa, birdcomm_bin, perm = 999) 
+
+# extract p-values for each species
+fitpcoa_pvals <- fitpcoa$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fit_pcoa_spp <- fitpcoa %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitpcoa_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+
+
+
+```
+
+### non-metric multidimensional scaling
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+bird_nmds<-metaMDS(birdcomm_bin,distance = "bray",trymax = 400,k=3)
+plot(bird_nmds)
+
+stressplot(bird_nmds)
+
+
+```
+
+We can also use the NMDS to determine species that are most differentiated across site (=plots).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+CMP_bbs_pcap_join_pcaponly_pcapsum$site<-rownames(CMP_bbs_pcap_join_pcaponly_pcapsum)
+
+plot_df <- scores(bird_nmds, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("site") %>% 
+  full_join(CMP_bbs_pcap_join_pcaponly_pcapsum, by = "site")
+
+plot_nmds <- ggplot(plot_df, aes(x = NMDS1, y = NMDS2, color = reservatio)) +
+  geom_point(size = 3, alpha = 0.8) +
+  stat_ellipse(linetype = 2, size = 1) +
+  labs(title = "NMDS")
+plot_nmds
+
+
+# envfit() takes the output of metaMDS() and the species matrix you created
+fitnmds <- envfit(bird_nmds, birdcomm_bin, perm = 999) 
+
+# extract p-values for each species
+fitnmds_pvals <- fitnmds$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fit_spp <- fitnmds %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitnmds_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+
+#nmds_plot_new <- ggplot(plot_df, aes(x = NMDS1, y = NMDS2)) +
+#  coord_fixed() +
+#  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
+#  stat_ellipse(aes(color = reservatio)) +
+#  geom_segment(data = fit_spp, aes(x = 0, xend = NMDS1, y = 0, yend = NMDS2),
+#               arrow = arrow(length = unit(0.25, "cm")),
+#               col = "black") +
+#  geom_text(data = fit_spp, aes(label = species)) 
+#nmds_plot_new
+```
+
+This is a bit hard to interpret, but this table:
+
+```{r, echo = FALSE}
+fitnmds_pvals
+```
+
+reports the species that contribute most to community-level differences.
+
+We can then select only those species that are most differentiated (by looking back at the fit_spp object from above - so p-values less than or equal to 0.001):
+
+```{r}
+fit_spp
+```
+
+Some interesting species show up here. 
+
+Summer Migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo
+
+Residents:American Robin, Black-Capped Chickadee, Brown-Headed Cowbird, Canada Goose, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch
+
+Winter Migrants: Dark-eyed Junco
+
+So 24 summer migrants, 16 residents, and 1 winter migrant. Keep in mind that these are differentiated across *plots*, rather than reservations. We will explore a way to identify reservation-level differentiated species below. 
+
+## constrained
+
+```{r}
+
+
+p<-rda(birdcomm_bin~.,vegecomm_drop,scale=T)
+fit<-envfit(p,vegecomm_drop,scale=T)
+
+
+p_0<-rda(birdcomm_bin~1,vegecomm_drop,scale=T)
+p_1<-rda(birdcomm_bin~.,vegecomm_drop,scale=T)
+
+set.seed(12345)
+p_step<- ordistep(p_0, scope = formula(p_1))
+p_step
+
+anova(p_step,by="term")
+anova(p_step,by="axis")
+ordiplot(p_step,scaling=3)
+```
+
+
+### constrained - sites
+
+Might be a more useful way to think about differentially-abundant species?
+
+```{r}
+
+
+p_reservations<-rda(birdcomm_bin~reservatio,CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
+
+ordiplot(p_reservations,scaling=3)
+
+reservations_fitbirds<-envfit(p_reservations,birdcomm_bin)
+
+reservations_fit<-envfit(p_reservations~reservatio,data=CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
+
+
+CMP_bbs_pcap_join_pcaponly_pcapsum$site<-rownames(CMP_bbs_pcap_join_pcaponly_pcapsum)
+
+plot_df_reservations <- scores(p_reservations, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("site") %>% 
+  full_join(CMP_bbs_pcap_join_pcaponly_pcapsum, by = "site")
+
+plot_rda_reservations <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2, color = reservatio)) +
+  geom_point(size = 3, alpha = 0.8) +
+  stat_ellipse(linetype = 2, size = 1) +
+  labs(title = "RDA")
+plot_rda_reservations
+
+
+fitreservations_pvals <- reservations_fitbirds$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fit_reservations_spp <- reservations_fitbirds %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitreservations_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+
+fit_reservations <- reservations_fit %>% 
+  scores(., display = "factors") %>% 
+  as.data.frame() %>%
+  rownames_to_column("reservations")
+
+rda_reservation_plot_new <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
+  coord_fixed() +
+  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
+  geom_segment(data = fit_reservations_spp, aes(x = 0, xend = RDA1, y = 0, yend = RDA2),
+               col = "black") +
+  geom_text(data = fit_reservations_spp, aes(label = species))+
+  geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))
+rda_reservation_plot_new
+
+rda_reservations_species <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
+  coord_fixed() +
+  geom_text(data = fit_reservations_spp, aes(label = species))+
+  geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))
+rda_reservations_species
+
+
+```
+
+### Now pRDA - with variance partitioning.
+
+```{r}
+
+vegecomm_latlong<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
+
+p_beststep_partial<-rda(birdcomm_bin~tol_rel + svp + dicot + cyper + small_tree + Condition(longitude+latitude),data=vegecomm_latlong)
+
+pcap_geog<-varpart(birdcomm_bin,~ tol_rel + svp + dicot + cyper + small_tree,~longitude+latitude,data=vegecomm_latlong)
+plot(pcap_geog)
+
+ordiplot(p_beststep_partial)
+```
+
+So - most of this variation is associated with these top covariates, and NOT necessarily with latitude and longitude alone.
+
+
+
+## community richness metrics
+
+Next, we can explore the relationships between species richness and plot characteristics. We will start with plot-level explorations. 
+
+
+### plot-level analyses
+
+#### plot-level richness and various indicators
+
+Now, we will produce some exploratory models and plots of basic indicators of vegetative quality, including the Floristic Quality Indicator (FQI) and the Vegetative Index of Biotic Integrity (VIBI).
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+S <- specnumber(birdcomm_bin)
+
+
+vegecomm_richness<-cbind(vegecomm,S)
+
+cor(vegecomm_richness)
+
+S_vibi<-lm(S~vibifq,vegecomm_richness)
+summary(S_vibi)
+
+S_fqi<-lm(S~fqi,vegecomm_richness)
+summary(S_fqi)
+
+ggplot(aes(x=vibifq,y=S),data=vegecomm_richness)+geom_point()
+
+ggplot(aes(x=fqi,y=S),data=vegecomm_richness)+geom_point()
+
+
+```
+
+Somewhat unexpectedly, this seems to suggest that higher VIBI scores actually produce slightly *less* species-rich communities. What could be causing this? Well, to start - perhaps the number of surveys for each plot may be influencing this.
+
+We can generate a summary of the number of surveys for each plot.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+pcap_surveynumber<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(simp_plot) %>%
+  summarise(n=n_distinct(date)
+            ) 
+vegecomm_richness$surveycount<-pcap_surveynumber$n
+
+specaccum(birdcomm_bin,w=pcap_surveynumber$n,method="random")
+
+vegecomm_richness
+
+
+CMP_bbs_pcap_join_pcaponly_pcapsum_date<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(simp_plot, reservatio,date,species_4_) %>%
+  summarise(n=n(),longitude=mean(xcoord), latitude=mean(ycoord),vibifq=mean(vibi_fq),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
+            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
+            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
+            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
+            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
+            sens_rel=mean(sensitive_rel_cov_metric_value),
+            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
+            tol_rel=mean(tolerant_rel_cov_metric_value),
+            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
+            inv=mean(invasive_graminoids_metric_value),
+            small_tree=mean(small_tree_metric_value),
+            subcanopy=mean(subcanopy_iv),
+            canopy=mean(canopy_iv.1)
+            ) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0)
+
+birds_bycount<-CMP_bbs_pcap_join_pcaponly_pcapsum_date[,29:ncol(CMP_bbs_pcap_join_pcaponly_pcapsum_date)]
+
+vegecomm_bycount<-CMP_bbs_pcap_join_pcaponly_pcapsum_date[,1:28]
+
+index<-as.numeric(factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$simp_plot))
+index_unique<-unique(index)
+
+rarefylist<-list()
+
+for(i in index_unique){
+  birds_temp<-birds_bycount[index %in% i,]
+  rarefylist[[i]]<- specaccum(birds_temp)
+}
+
+totalspecaccum<-specaccum(birds_bycount)
+
+plot(totalspecaccum)
+
+plot(rarefylist[[1]])
+
+```
+
+So the number of surveys clearly has an effect on the species richness of the site. This is somewhat difficult to account for, but we will attempt to do so using mixed effects models. 
+
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+simp_plot<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$simp_plot)
+
+date<-strptime(CMP_bbs_pcap_join_pcaponly_pcapsum_date$date,format="%m/%d/%Y")
+
+month<-month(date)
+
+S_plotdate<-specnumber(birds_bycount)
+
+
+Rich_vibifq<-lmer(S_plotdate~vibifq+(1|simp_plot),vegecomm_bycount)
+summary(Rich_vibifq)
+
+Rich_vibifqnotrees<-lmer(S_plotdate~vibifqnotrees+(1|simp_plot),vegecomm_bycount)
+summary(Rich_vibifqnotrees)
+
+Rich_carex<-lmer(S_plotdate~carex+(1|simp_plot),vegecomm_bycount)
+summary(Rich_carex)
+
+Rich_cyper<-lmer(S_plotdate~cyper+(1|simp_plot),vegecomm_bycount)
+summary(Rich_cyper)
+
+Rich_dicot<-lmer(S_plotdate~dicot+(1|simp_plot),vegecomm_bycount)
+summary(Rich_dicot)
+
+Rich_shade<-lmer(S_plotdate~shade+(1|simp_plot),vegecomm_bycount)
+summary(Rich_shade)
+
+Rich_hydro<-lmer(S_plotdate~hydro+(1|simp_plot),vegecomm_bycount)
+summary(Rich_hydro)
+
+Rich_shrub<-lmer(S_plotdate~shrub+(1|simp_plot),vegecomm_bycount)
+summary(Rich_shrub)
+
+Rich_svp<-lmer(S_plotdate~svp+(1|simp_plot),vegecomm_bycount)
+summary(Rich_svp)
+
+Rich_ap<-lmer(S_plotdate~ap+(1|simp_plot),vegecomm_bycount)
+summary(Rich_ap)
+
+Rich_bryo<-lmer(S_plotdate~bryo+(1|simp_plot),vegecomm_bycount)
+summary(Rich_bryo)
+
+Rich_sens_rel<-lmer(S_plotdate~sens_rel+(1|simp_plot),vegecomm_bycount)
+summary(Rich_sens_rel)
+
+Rich_tol_rel<-lmer(S_plotdate~tol_rel+(1|simp_plot),vegecomm_bycount)
+summary(Rich_tol_rel)
+
+Rich_fqi<-lmer(S_plotdate~fqi+(1|simp_plot),vegecomm_bycount)
+summary(Rich_fqi)
+
+Rich_inv<-lmer(S_plotdate~inv+(1|simp_plot),vegecomm_bycount)
+summary(Rich_inv)
+
+Rich_small_tree<-lmer(S_plotdate~small_tree+(1|simp_plot),vegecomm_bycount)
+summary(Rich_small_tree)
+
+Rich_subcanopy<-lmer(S_plotdate~subcanopy+(1|simp_plot),vegecomm_bycount)
+summary(Rich_subcanopy)
+
+Rich_canopy<-lmer(S_plotdate~canopy+(1|simp_plot),vegecomm_bycount)
+summary(Rich_canopy)
+
+Rich_null<-lmer(S_plotdate~1+(1|simp_plot),vegecomm_bycount)
+summary(Rich_null)
+
+richmods<-list(Rich_ap,Rich_bryo,Rich_canopy,Rich_carex,Rich_cyper,Rich_dicot,Rich_fqi,Rich_hydro,Rich_inv,Rich_sens_rel,Rich_shade,Rich_shrub,Rich_small_tree,Rich_subcanopy,Rich_svp,Rich_tol_rel,Rich_vibifq,Rich_vibifqnotrees,Rich_null)
+
+aictab(richmods)
+
+
+```
+
+So richness - at a plot level, and after accounting for plot identity - is determined by how many tolerant species are in the associated plot.
+
+Here is the plot for this top model:
+
+```{r, echo = FALSE}
+
+ggplot(aes(x=tol_rel,y=S),data=vegecomm_richness)+geom_point()+geom_smooth(method="lm")
+```
+
+
+We can also verify that our mixed effects model fits better compared to the fixed effects model.
+
+```{r}
+Rich_tol_rel_fixed<-lm(S_plotdate~tol_rel,vegecomm_bycount)
+summary(Rich_tol_rel_fixed)
+
+anova(Rich_tol_rel, Rich_tol_rel_fixed) 
+```
+
+This confirms that we chose correctly - the mixed effects model fits better than the fixed effects-only model.
+
+We can also inspect how this observation-level, mixed effect model compares to a more consolidated, plot-level view (in other words - a view that just looks at richness at a plot level - aggregating over observations).
+```{r}
+S_tol_rel<-lm(S~tol_rel,vegecomm_richness)
+confint(S_tol_rel)
+
+confint(Rich_tol_rel)
+
+```
+
+We can see that, while the covariate estimate for the plot-level model is higher, it is also estimated with much more variance (its confidence intervals are wider). This is not surprising - our functional sample size for this dataset is 164 plots. In contrast, while the observation-level mixed-effects model has a lower covariate estimate, we have tighter confidence intervals around this estimate - likely by virtue of a larger number of samples and a more effectively parameterized model. 
+
+#### plot-level distances and various indicators
+
+```{r}
+birdcomm_bin_bray<-vegdist(birdcomm_bin,method = "bray")
+
+plot_bray_all<-adonis2(birdcomm_bin_bray~.,vegecomm,permutations = 9999)
+plot_bray_all
+```
+
+### reservation-level analyses
+```{r}
+
+birdcomm_reserv<-CMP_bbs_pcap_join_pcaponly %>%
+  group_by(reservatio,species_4_) %>%
+  summarise(n=n()) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0) 
+  
+
+birdcomm_reserv<-column_to_rownames(birdcomm_reserv,var="reservatio")
+birdcomm_reserv<-birdcomm_reserv[,-1]
+birdcomm_reserv_bin<-birdcomm_reserv %>% mutate_if(is.numeric, ~1 * (. >= 1))
+
+reservspcount<-specnumber(birdcomm_reserv_bin)
+reservspcount
+
+vegecomm_reserv<-CMP_bbs_pcap_join_pcaponly %>%
+  group_by(reservatio) %>%
+  summarise(vibifq=mean(vibi_fq),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
+            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
+            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
+            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
+            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
+            sens_rel=mean(sensitive_rel_cov_metric_value),
+            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
+            tol_rel=mean(tolerant_rel_cov_metric_value),
+            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
+            inv=mean(invasive_graminoids_metric_value),
+            small_tree=mean(small_tree_metric_value),
+            subcanopy=mean(subcanopy_iv),
+            canopy=mean(canopy_iv.1),
+            numsurveys=n_distinct(paste0(simp_plot,date)))
+vegecomm_reserv_richness<-cbind(vegecomm_reserv,reservspcount)
+
+cor(vegecomm_reserv_richness[,-1])
+ggplot(aes(x=vibifq,y=reservspcount),data=vegecomm_reserv_richness)+geom_point()+geom_smooth(method="lm")
+
+
+reservation_spaccum<-specaccum(birdcomm_reserv_bin,w = vegecomm_reserv$numsurveys, method="random")
+plot(reservation_spaccum)
+
+```
+
+This doesn't quite get at what we want - this displays species accumulation across reservations after accounting for survey effort per reservation. Let's try exploring reservation-by-reservation rarefaction with the previous observation-level dataset.
+
+```{r}
+birds_bycount
+
+vegecomm_bycount
+
+
+index<-as.numeric(factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$reservatio))
+index_unique<-unique(index)
+
+rarefylist_reservation<-list()
+
+for(i in index_unique){
+  birds_temp<-birds_bycount[index %in% i,]
+  rarefylist_reservation[[i]]<- specaccum(birds_temp)
+}
+
+plot(totalspecaccum)
+
+plot(rarefylist_reservation[[4]])
+
+interpolatedrichness_n3<-data.frame(levels(factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$reservatio)),rep(1,16))
+
+colnames(interpolatedrichness_n3)<-c("reservation","richness")
+
+for(i in index_unique){
+  birds_temp<-birds_bycount[index %in% i,]
+  interpolatedrichness_n3$richness[i]<- predict(specaccum(birds_temp),newdata=3)
+}
+
+
+```
+
+
+With the plot-level data, we could easily account for variation in survey effort across plots with a mixed model design, but this case is a bit more complicated. We are interested in reservation-level species richness, but know that reservations were visited different numbers of times - based on the number of plots and the number of surveys/plot. Thus, the easiest thing to start with is simply using species richness estimates interpolated to the least number of surveys per reservation (3, in our case).
+
+Now we can proceed with exploring richness patterns across reservations.
+
+```{r}
+
+vegecomm_reserv_richness$interrich_n3<-interpolatedrichness_n3$richness
+
+Rich_reserv_vibifq<-lm(interrich_n3~vibifq,vegecomm_reserv_richness)
+summary(Rich_reserv_vibifq)
+
+Rich_reserv_vibifqnotrees<-lm(interrich_n3~vibifqnotrees,vegecomm_reserv_richness)
+summary(Rich_reserv_vibifqnotrees)
+
+Rich_reserv_carex<-lm(interrich_n3~carex,vegecomm_reserv_richness)
+summary(Rich_reserv_carex)
+
+Rich_reserv_cyper<-lm(interrich_n3~cyper,vegecomm_reserv_richness)
+summary(Rich_reserv_cyper)
+
+Rich_reserv_dicot<-lm(interrich_n3~dicot,vegecomm_reserv_richness)
+summary(Rich_reserv_dicot)
+
+Rich_reserv_shade<-lm(interrich_n3~shade,vegecomm_reserv_richness)
+summary(Rich_reserv_shade)
+
+Rich_reserv_hydro<-lm(interrich_n3~hydro,vegecomm_reserv_richness)
+summary(Rich_reserv_hydro)
+
+Rich_reserv_shrub<-lm(interrich_n3~shrub,vegecomm_reserv_richness)
+summary(Rich_reserv_shrub)
+
+Rich_reserv_svp<-lm(interrich_n3~svp,vegecomm_reserv_richness)
+summary(Rich_reserv_svp)
+
+Rich_reserv_ap<-lm(interrich_n3~ap,vegecomm_reserv_richness)
+summary(Rich_reserv_ap)
+
+Rich_reserv_bryo<-lm(interrich_n3~bryo,vegecomm_reserv_richness)
+summary(Rich_reserv_bryo)
+
+Rich_reserv_sens_rel<-lm(interrich_n3~sens_rel,vegecomm_reserv_richness)
+summary(Rich_reserv_sens_rel)
+
+Rich_reserv_tol_rel<-lm(interrich_n3~tol_rel,vegecomm_reserv_richness)
+summary(Rich_reserv_tol_rel)
+
+Rich_reserv_fqi<-lm(interrich_n3~fqi,vegecomm_reserv_richness)
+summary(Rich_reserv_fqi)
+
+Rich_reserv_inv<-lm(interrich_n3~inv,vegecomm_reserv_richness)
+summary(Rich_reserv_inv)
+
+Rich_reserv_small_tree<-lm(interrich_n3~small_tree,vegecomm_reserv_richness)
+summary(Rich_reserv_small_tree)
+
+Rich_reserv_subcanopy<-lm(interrich_n3~subcanopy,vegecomm_reserv_richness)
+summary(Rich_reserv_subcanopy)
+
+Rich_reserv_canopy<-lm(interrich_n3~canopy,vegecomm_reserv_richness)
+summary(Rich_reserv_canopy)
+
+Rich_reserv_null<-lm(interrich_n3~1,vegecomm_reserv_richness)
+summary(Rich_reserv_null)
+
+richmods_reserv<-list(Rich_reserv_ap,Rich_reserv_bryo,Rich_reserv_canopy,Rich_reserv_carex,Rich_reserv_cyper,Rich_reserv_dicot,Rich_reserv_fqi,Rich_reserv_hydro,Rich_reserv_inv,Rich_reserv_sens_rel,Rich_reserv_shade,Rich_reserv_shrub,Rich_reserv_small_tree,Rich_reserv_subcanopy,Rich_reserv_svp,Rich_reserv_tol_rel,Rich_reserv_vibifq,Rich_reserv_vibifqnotrees,Rich_reserv_null)
+
+aictab(richmods_reserv)
+
+```
+
+although our power is a bit limited above, it does appear that the Vegetative Index of Biotic Integrity - at a reservation-level - does appear to predict bird species richness (as long as we do not include woody plants in that list!)
+
+we can also plot out richness for each site:
+
+```{r}
+ggplot(aes(x=reservatio,y=reservspcount),data=vegecomm_reserv_richness)+geom_col()
+
+ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col()
+
+```
+
+In confirmation of our prior ordination plots, it now appears that Rocky River is one of the most species rich areas - followed by Hinckley, South Chagrin, Bedford, and Brecksville. 
+
+
+#### reservation shape features and species richness
+
+While these vegetative associations are certainly important, it is often helpful to also think about how the shape of our reservations influences the species found within them. There is a rich body of literature on the effects of landscape context and configuration on 
+
+```{r}
+
+vegecomm_reserv_richness
+structuralconnectivity<-read.csv("Reservations_LandMetrics_bbs.csv",header=T)
+vegecomm_reserv_richness$reservatio
+structuralconnectivity$resID
+
+vegecomm_reserv_richness_struct<-cbind(vegecomm_reserv_richness,structuralconnectivity)
+
+Rich_reserv_acres<-lm(interrich_n3~acres,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_acres)
+
+Rich_reserv_ai<-lm(interrich_n3~ai,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_ai)
+
+Rich_reserv_areamn<-lm(interrich_n3~area_mn,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_areamn)
+
+Rich_reserv_ca<-lm(interrich_n3~ca,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_ca)
+
+Rich_reserv_cai_mn<-lm(interrich_n3~cai_mn,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_cai_mn)
+
+Rich_reserv_circle_mn<-lm(interrich_n3~circle_mn,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_circle_mn)
+
+Rich_reserv_clumpy<-lm(interrich_n3~clumpy,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_clumpy)
+
+Rich_reserv_cohesion<-lm(interrich_n3~cohesion,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_cohesion)
+
+Rich_reserv_contig_mn<-lm(interrich_n3~contig_mn,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_contig_mn)
+
+Rich_reserv_core_mn<-lm(interrich_n3~core_mn,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_core_mn)
+
+Rich_reserv_cpland<-lm(interrich_n3~cpland,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_cpland)
+
+Rich_reserv_dcad<-lm(interrich_n3~dcad,vegecomm_reserv_richness_struct)
+summary(Rich_reserv_dcad)
+
+```
+
+
+# multi-species occupancy modelling
+
+```{r,echo = FALSE,eval=F}
+vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
+
+
+times<-hm(CMP_bbs_pcap_join_pcaponly$time_start)
+time_minutes<-hour(times)*60 + minute(times)
+CMP_bbs_pcap_join_pcaponly$time_minutes<-time_minutes
+CMP_bbs_pcap_join_pcaponly_detecthistory<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(simp_plot, date, species_4_) %>%
+  summarise(n=n(),vibifq=mean(vibi_fq),time_minutes=mean(time_minutes),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
+            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
+            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
+            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
+            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
+            sens_rel=mean(sensitive_rel_cov_metric_value),
+            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
+            tol_rel=mean(tolerant_rel_cov_metric_value),
+            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
+            inv=mean(invasive_graminoids_metric_value),
+            small_tree=mean(small_tree_metric_value),
+            subcanopy=mean(subcanopy_iv),
+            canopy=mean(canopy_iv.1)
+  ) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0)
+
+
+sitechecks<-CMP_bbs_pcap_join_pcaponly_detecthistory[,1:2]
+
+sitechecks$date<- as.Date(sitechecks$date , format = "%m/%d/%Y")
+
+sitechecks$datecount<-as.numeric(sitechecks$date-min(sitechecks$date)+1)
+
+
+sitechecks_surveyhistory<-sitechecks %>%
+  group_by(simp_plot) %>% 
+  mutate(check=as.character(dense_rank(date))) %>%
+  arrange(simp_plot) %>%
+  spread(check,datecount) %>%
+  summarise(`1` = mean(`1`,na.rm=T),
+            `2`=mean(`2`,na.rm=T),
+            `3`=mean(`3`,na.rm=T),
+            `4`=mean(`4`,na.rm=T),
+            `5`=mean(`5`,na.rm=T),
+            `6`=mean(`6`,na.rm=T),
+            `7`=mean(`7`,na.rm=T),
+            `8`=mean(`8`,na.rm=T))
+
+sitetimes<-CMP_bbs_pcap_join_pcaponly_detecthistory[,c(1,2,4)]
+
+sitetimes_surveyhistory<-sitetimes %>%
+  group_by(simp_plot) %>% 
+  mutate(check=as.character(dense_rank(date))) %>%
+  arrange(simp_plot) %>%
+  spread(check,time_minutes) %>%
+  summarise(`1` = mean(`1`,na.rm=T),
+            `2`=mean(`2`,na.rm=T),
+            `3`=mean(`3`,na.rm=T),
+            `4`=mean(`4`,na.rm=T),
+            `5`=mean(`5`,na.rm=T),
+            `6`=mean(`6`,na.rm=T),
+            `7`=mean(`7`,na.rm=T),
+            `8`=mean(`8`,na.rm=T))
+
+CMP_bbs_pcap_join_pcaponly_detecthistory$datecount<-sitechecks$datecount
+
+
+sitetimes_surveyhistory_forindexing<-sitetimes %>%
+  group_by(simp_plot) %>% 
+  mutate(check=as.character(dense_rank(date))) %>%
+  arrange(simp_plot) %>%
+  spread(check,time_minutes)
+
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[1]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+firstcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name")
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[2]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+secondcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[3]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+thirdcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[4]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+fourthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name")
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[5]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+fifthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[6]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+sixthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[7]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+seventhcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+  arrange(datecount) %>% 
+  summarise_all(funs(list(.[8]))) %>% 
+  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
+                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
+                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
+                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+                  AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
+                  BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
+                  BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
+                  COYE, DEJU, DOWO, EABL, EAKI, EAME, EAPH, EATO, EAWP, EUST, 
+                  FISP, GBHE, GCFL, GHOW, GRCA, GRHE, HAWO, HERG, HETH, HOFI, 
+                  HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
+                  NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
+                  RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
+                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
+                  datecount))
+
+eighthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck %>%
+  dplyr::select(ACFL:YTWA) %>%
+  rownames_to_column() %>%
+  pivot_longer(-rowname) %>%
+  pivot_wider(names_from=rowname) %>%
+  column_to_rownames(var = "name") 
+
+bbs_occobject<-list()
+
+bbs_occobject$y<-array(dim=c(104,164,3))
+
+bbs_occobject$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_birds),
+                           as.matrix(thirdcheck_birds)), dim=c(104,164,3))
+
+bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:4])
+
+bbs_occobject$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:4])
+
+bbs_occobject$occ.covs<-as.matrix(vegecomm[,-(1:2)])
+
+bbs_occobject$coords<-as.matrix(vegecomm[,1:2])
+
+
+```
+
+## MSOM - running different models
+
+### basic null model 
+
+```{r, eval = FALSE}
+bbs_occobject_null.occ.formula <- ~1
+bbs_occobject_null.det.formula <- ~ 1
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.null <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
+                  det.formula = bbs_occobject_null.det.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.null)
+ppc.ms.null.out <- ppcOcc(out.ms.null, 'chi-squared', group = 1)
+summary(ppc.ms.null.out)
+
+waicOcc(out.ms.null)
+
+```
+
+
+### building up complexity of detection model
+
+```{r, eval = FALSE}
+bbs_occobject_null.occ.formula <- ~1
+bbs_occobject_day.det.formula <- ~ scale(day)
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.detect.day <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
+                  det.formula = bbs_occobject_day.det.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.detect.day)
+ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.day, 'chi-squared', group = 1)
+summary(out.ms.detect.day)
+
+waicOcc(out.ms.detect.day)
+
+```
+
+### day and time-of-day
+
+```{r, eval = FALSE}
+bbs_occobject_null.occ.formula <- ~1
+bbs_occobject_daytod.det.formula <- ~ scale(day)+scale(tod)
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.detect.daytod <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
+                  det.formula = bbs_occobject_daytod.det.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.detect.daytod)
+ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.daytod, 'chi-squared', group = 1)
+summary(out.ms.detect.daytod)
+
+waicOcc(out.ms.detect.daytod)
+
+```
+
+### day, tod, quadratic day
+
+```{r, eval = FALSE}
+bbs_occobject_null.occ.formula <- ~1
+bbs_occobject_daytodquad.det.formula <- ~ scale(day)+scale(tod) +I(scale(day)^2)
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.detect.daytodquad<- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
+                  det.formula = bbs_occobject_daytodquad.det.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.detect.daytodquad)
+ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.daytodquad, 'chi-squared', group = 1)
+summary(out.ms.detect.daytodquad)
+
+waicOcc(out.ms.detect.daytodquad)
+
+```
+
+The best-supported model is within 2 WAIC of a simpler detection model - one that just includes day. So we will proceed with just using a linear term for day in our detectability submodels. 
+
+Now we will run several different occupancy submodels, once again evaluating fit for progressively more complicated models.
+
+### occupancy model with vibi-fq
+
+```{r, eval = FALSE}
+bbs_occobject_vibifq.occ.formula <- ~ scale(vibifq)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.vibifq <- msPGOcc(occ.formula = bbs_occobject_vibifq.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.vibifq)
+ppc.ms.vibifq.out <- ppcOcc(out.ms.vibifq, 'chi-squared', group = 1)
+summary(ppc.ms.vibifq.out)
+
+
+out.ms.bestdec.small <- msPGOcc(occ.formula = ~1, 
+                       det.formula = bbs_occobject.det.best.formula, 
+                       data = bbs_occobject, 
+                       inits = ms.inits, 
+                       n.samples = 30000, 
+                       priors = ms.priors, 
+                       n.omp.threads = 1, 
+                       verbose = TRUE, 
+                       n.report = 6000, 
+                       n.burn = 10000,
+                       n.thin = 50, 
+                       n.chains = 3)
+
+
+waicOcc(out.ms.bestdec.small)
+waicOcc(out.ms.vibifq)
+
+```
+
+### occupancy model with vibi-fq-notrees
+
+```{r, eval = FALSE}
+bbs_occobject_vibifqnotrees.occ.formula <- ~ scale(vibifqnotrees)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.vibifqnotrees <- msPGOcc(occ.formula = bbs_occobject_vibifqnotrees.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.vibifqnotrees)
+ppc.ms.vibifqnotrees.out <- ppcOcc(out.ms.vibifqnotrees, 'chi-squared', group = 1)
+summary(ppc.ms.vibifqnotrees.out)
+
+waicOcc(out.ms.vibifqnotrees)
+
+```
+
+
+### occupancy model with all rda-supported covariates 
+
+```{r, eval = FALSE}
+bbs_occobject_fullrda.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.fullrda <- msPGOcc(occ.formula = bbs_occobject_fullrda.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.fullrda)
+ppc.ms.fullrda.out <- ppcOcc(out.ms.fullrda, 'chi-squared', group = 1)
+summary(ppc.ms.fullrda.out)
+
+waicOcc(out.ms.fullrda)
+
+```
+
+
+### occupancy model with just canopy/woody veg-related covariates
+
+```{r, eval = FALSE}
+bbs_occobject_structure.occ.formula <- ~ scale(canopy)+scale(subcanopy)+scale(small_tree)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.structure <- msPGOcc(occ.formula = bbs_occobject_structure.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.structure)
+ppc.ms.structure.out <- ppcOcc(out.ms.structure, 'chi-squared', group = 1)
+summary(ppc.ms.structure.out)
+
+waicOcc(out.ms.structure)
+
+```
+
+### occupancy model with just tolerance/sensitivity
+
+```{r, eval = FALSE}
+bbs_occobject_tolerance.occ.formula <- ~ scale(tol_rel)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.tolerance<- msPGOcc(occ.formula = bbs_occobject_tolerance.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.tolerance)
+ppc.ms.tolerance.out <- ppcOcc(out.ms.tolerance, 'chi-squared', group = 1)
+summary(ppc.ms.tolerance.out)
+
+waicOcc(out.ms.tolerance)
+
+```
+
+
+### global model
+
+```{r, eval = FALSE}
+bbs_occobject_global.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)+scale(shrub)+scale(hydro)+scale(subcanopy)+scale(canopy)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.global <- msPGOcc(occ.formula = bbs_occobject_global.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.global)
+ppc.ms.global.out <- ppcOcc(out.ms.global, 'chi-squared', group = 1)
+summary(ppc.ms.global.out)
+
+waicOcc(out.ms.global)
+
+```
+
+### global model - all non-correlated covariates (after removing some redundancy)
+
+```{r, eval = FALSE}
+bbs_occobject_global.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)+scale(shrub)+scale(hydro)+scale(subcanopy)+scale(canopy)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.global <- msPGOcc(occ.formula = bbs_occobject_global.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.global)
+ppc.ms.global.out <- ppcOcc(out.ms.global, 'chi-squared', group = 1)
+summary(ppc.ms.global.out)
+
+waicOcc(out.ms.global)
+
+```
+
+### just FQAI
+
+```{r, eval = FALSE}
+bbs_occobject_fqi.occ.formula <- ~ scale(fqi)
+bbs_occobject.det.best.formula <- ~ scale(day) 
+N <- dim(bbs_occobject$y)[1]
+ms.inits <- list(alpha.comm = 0, 
+                 beta.comm = 0, 
+                 beta = 0, 
+                 alpha = 0,
+                 tau.sq.beta = 1, 
+                 tau.sq.alpha = 1, 
+                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
+ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
+                  alpha.comm.normal = list(mean = 0, var = 2.72), 
+                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
+                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
+out.ms.fqi <- msPGOcc(occ.formula = bbs_occobject_fqi.occ.formula, 
+                  det.formula = bbs_occobject.det.best.formula, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 30000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 6000, 
+                  n.burn = 10000,
+                  n.thin = 50, 
+                  n.chains = 3)
+
+
+summary(out.ms.fqi)
+ppc.ms.fqi.out <- ppcOcc(out.ms.fqi, 'chi-squared', group = 1)
+summary(ppc.ms.fqi.out)
+
+waicOcc(out.ms.fqi)
+
+```
+
+
+### model selection
+
+we can also print out a table of Widely Applicable Information Criterion (wAIC) values. The lower this is, the better the model fit. 
+
+```{r, eval = FALSE}
+AICc_table<-tibble(.rows = 10)
+
+AICc_table$model<-c("Null","p ~ day", "p ~ day + time-of-day", "p ~ day^2 + day +tod", "p ~ day, psi ~ vibi-fq", "p ~ day, psi ~ vibi-fq-notree","p ~ day, psi ~ tolerant + seedless vascular + dicots + cyperaceae + small trees","p~day,psi~tolerant","p~day,psi~tolerant + seedless vascular + dicot + cyperaceae + small trees +shrubs+hydro+subcanopy+canopy","p~day,psi~fqi")
+
+AICc_table$wAIC<-c(waicOcc(out.ms.null)[[3]],waicOcc(out.ms.detect.day)[[3]],waicOcc(out.ms.detect.daytod)[[3]],
+                   waicOcc(out.ms.detect.daytodquad)[[3]],waicOcc(out.ms.vibifq)[[3]],waicOcc(out.ms.vibifqnotrees)[[3]],
+                   waicOcc(out.ms.fullrda)[[3]],waicOcc(out.ms.tolerance)[[3]],waicOcc(out.ms.global)[[3]],waicOcc(out.ms.fqi))
+
+```
+
+```{r, echo = FALSE}
+
+AICc_table<-read.csv("wAIC_table_revise.csv")
+AICc_table[order(AICc_table$wAIC),]
+```
+
+
+So, the top model is the global, followed by the fullrda model.
+
+
+
+Now, we plot based on this top model.
+
+### plotting using an RShiny app
+
+```{r, echo = FALSE, eval = FALSE}
+
+
+sppnames<-c("ACFL","ALFL","AMCR","AMGO","AMKE","AMRE","AMRO","AMWO","BADO","BAEA",
+"BANS","BAOR","BARS","BCCH","BEKI","BGGN","BHCO","BHVI","BLJA","BOBO","BRCR","BRTH","BTNW","BWHA",
+"BWWA","CANG","CARW","CEDW","CERW","CHSP","CHSW","CLSW","COGR","COHA","COYE","DEJU","DOWO","EABL","EAKI","EAME",
+"EAPH","EATO","EAWP","EUST","FISP","GBHE","GCFL","GHOW","GRCA","GRHE","HAWO","HERG","HETH","HOFI",
+"HOSP","HOWA","HOWR","INBU","KILL","LOWA","MALL","MODO","NOCA","NOFL","NOPA",
+"NRWS","OROR","OVEN","PIWO","PUFI","PUMA","RBGR","RBGU","RBNU","RBWO","REVI",
+"RHWO","ROPI","RSHA","RTHA","RTHU","RWBL","SAVS","SCTA","SOSP","SWSP","TEWA",
+"TRES","TUTI","TUVU","VEER","VIRA","WAVI","WBNU",
+"WEVI","WIFL","WITU","WIWR","WODU","WOTH","YBCU","YEWA","YTVI","YTWA")
+
+#loop for just the 164 original points
+
+idwrasters<-list()
+
+for(i in 1:length(sppnames)){
+  plot.dat.ms <- data.frame(x = bbs_occobject$coords[,1], 
+                            y = bbs_occobject$coords[,2], 
+                            mean.psi = apply(out.ms.global$psi.samples[,i,], 2, mean))
+  
+  dsp <- SpatialPoints(plot.dat.ms[,1:2])
+  dsp <- SpatialPointsDataFrame(dsp, plot.dat.ms)
+  # define groups for mapping
+  cuts <- c(0,0.25,0.75,1.0)
+  # set up a palette of interpolated colors
+  blues <- colorRampPalette(c('yellow', 'orange', 'blue', 'dark blue'))
+  spplot(dsp, 'mean.psi', cuts=cuts, col.regions=blues(5), pch=20, cex=2)
+  v <- voronoi(dsp)
+  
+  ch <- chull(plot.dat.ms[,1:2])
+  coords <- plot.dat.ms[c(ch, ch[1]), 1:2]  # closed polygon
+  
+  plot(plot.dat.ms[,1:2], pch=19)
+  lines(coords, col="red")
+  
+ 
+  
+  sp_poly <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID=1)))
+  # set coordinate reference system with SpatialPolygons(..., proj4string=CRS(...))
+  # e.g. CRS("+proj=longlat +datum=WGS84")
+  sp_poly_df <- SpatialPolygonsDataFrame(sp_poly, data=data.frame(ID=1))
+  #writeOGR(sp_poly_df, "chull", layer="chull", driver="ESRI Shapefile")
+  
+  vca <- intersect(v, sp_poly_df)
+  spplot(vca, 'mean.psi', col.regions=rev(get_col_regions()))
+  r <- raster(sp_poly_df, res=5000)
+#  crs(r)<-"+proj=longlat +datum=NAD83"
+  vr <- rasterize(vca, r, 'mean.psi')
+  plot(vr)
+  points(dsp)
+  
+  writeRaster(vr,filename = paste0(sppnames[i],"_occmeanpsi_globalmod_origbbslocs.asc"),overwrite=TRUE)
+  
+  fitmax <- gstat::gstat(formula = mean.psi ~ 1, data = dsp, nmax = 4, set = list(idp = .5))
+  maxint <- raster::interpolate(r, model=fitmax, ext=vr)
+  plot(maxint, col=rev(heat.colors(255)), ext=vr)
+  plot(vr, add=TRUE)
+  r2 <- crop(maxint, extent(sp_poly_df))
+  r3 <- mask(r2, sp_poly_df)
+  idwrasters[[i]]<-r3
+  writeRaster(maxint,filename = paste0(sppnames[i],"_occmeanpsi_globalmod_idw_origbbslocs.asc"),overwrite=TRUE)
+  
+}
+
+saveRDS(idwrasters,"idwrasters_global.Rdata")
+
+saveRDS(sppnames,"sppnames.Rdata")
+
+```
+
+```{r, echo = FALSE}
+knitr::include_app("https://testudinidude.shinyapps.io/bbsapp/")
+```
+
+### covariate plotting
+
+```{r}
+#options(max.print=1000000)
+#sink("outmsglobal_90percent.txt")
+#print(summary(out.ms.global,level="species",quantiles=c(0.05,0.5,0.95)))
+#sink() 
+
+covars<-read.csv("outmsglobal_covar.csv",header=T)
+
+covars_tolerance<-subset(covars,covars$Covariate=="tol_rel")
+
+covars_tolerance<-covars_tolerance[order(covars_tolerance$Mean),]
+
+spp_tolorder<-factor(covars_tolerance$Species,levels=covars_tolerance$Species)
+
+covars_tolerance$spporder<-spp_tolorder
+
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.1652)+theme_classic(base_size=16)
+
+covars_svp<-subset(covars,covars$Covariate=="svp")
+
+covars_svp<-covars_svp[order(covars_svp$Mean),]
+
+
+spp_svporder<-factor(covars_svp$Species,levels=covars_svp$Species)
+
+covars_svp$spporder<-spp_svporder
+
+ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0594)+theme_classic(base_size=16)
+
+
+covars_dicot<-subset(covars,covars$Covariate=="dicot")
+
+covars_dicot<-covars_dicot[order(covars_dicot$Mean),]
+
+
+spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
+
+covars_dicot$spporder<-spp_dicotorder
+
+ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2461)+theme_classic(base_size=16)
+
+
+covars_cyper<-subset(covars,covars$Covariate=="cyper")
+
+covars_cyper<-covars_cyper[order(covars_cyper$Mean),]
+
+
+spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
+
+covars_cyper$spporder<-spp_cyperorder
+
+ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.1375)+theme_classic(base_size=16)
+
+
+covars_smalltree<-subset(covars,covars$Covariate=="small_tree")
+
+covars_smalltree<-covars_smalltree[order(covars_smalltree$Mean),]
+
+
+spp_treeorder<-factor(covars_smalltree$Species,levels=covars_smalltree$Species)
+
+covars_smalltree$spporder<-spp_treeorder
+
+ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.0672)+theme_classic(base_size=16)
+
+
+
+covars_shrub<-subset(covars,covars$Covariate=="shrub")
+
+covars_shrub<-covars_shrub[order(covars_shrub$Mean),]
+
+
+spp_shruborder<-factor(covars_shrub$Species,levels=covars_shrub$Species)
+
+covars_shrub$spporder<-spp_shruborder
+
+ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.2181)+theme_classic(base_size=16)
+
+
+covars_hydro<-subset(covars,covars$Covariate=="hydro")
+
+covars_hydro<-covars_hydro[order(covars_hydro$Mean),]
+
+spp_hydroorder<-factor(covars_hydro$Species,levels=covars_hydro$Species)
+
+covars_hydro$spporder<-spp_hydroorder
+
+ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2068)+theme_classic(base_size=16)
+
+covars_subcanopy<-subset(covars,covars$Covariate=="subcanopy")
+
+covars_subcanopy<-covars_subcanopy[order(covars_subcanopy$Mean),]
+
+spp_subcanopyorder<-factor(covars_subcanopy$Species,levels=covars_subcanopy$Species)
+
+covars_subcanopy$spporder<-spp_subcanopyorder
+
+ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0393)+theme_classic(base_size=16)
+
+covars_canopy<-subset(covars,covars$Covariate=="canopy")
+
+covars_canopy<-covars_canopy[order(covars_canopy$Mean),]
+
+spp_canopyorder<-factor(covars_canopy$Species,levels=covars_canopy$Species)
+
+covars_canopy$spporder<-spp_canopyorder
+
+ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0702)+theme_classic(base_size=16)
+
+```

@@ -1,0 +1,8 @@
+"","model","wAIC"
+"1","Null",23840.3192480124
+"2","p ~ day",23756.92892841
+"3","p ~ day + time-of-day",23769.7767515154
+"4","p ~ day^2 + day +tod",23755.7149228401
+"5","p ~ day, psi ~ vibi-fq",23190.5652902264
+"6","p ~ day, psi ~ vibi-fq-notree",23372.4374539566
+"7","p ~ day, psi ~ tolerant + seedless vascular + dicots + cyperaceae + small trees",23184.9984992341
