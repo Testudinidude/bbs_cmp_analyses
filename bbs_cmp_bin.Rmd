@@ -1,7 +1,7 @@
 ---
 title: "Breeding Bird Surveys - Cleveland Metroparks"
 author: "Nathan W. Byer"
-date: "5/16/2022"
+date: "6/27/2022/2022"
 output: 
   html_document:
     toc: true
@@ -18,8 +18,9 @@ runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-options(width=300)
+knitr::opts_chunk$set(echo = TRUE,out.width = "100%")
+
+options(width=1200)
 ```
 
 ```{r, echo = FALSE,warning=FALSE,error=FALSE,message=FALSE}
@@ -47,6 +48,15 @@ library(broom)
 library(AICcmodavg)
 library(indicspecies)
 library(lme4)
+
+
+#code from here: https://www.r-bloggers.com/2011/11/outersect-the-opposite-of-rs-intersect-function/#:~:text=setdiff()%20produces%20all%20elements,vector%20(i.e.%20is%20asymmetric).
+outersect <- function(x, y, ...) {
+  big.vec <- c(x, y, ...)
+  duplicates <- big.vec[duplicated(big.vec)]
+  setdiff(big.vec, unique(duplicates))
+}
+
 ```
 
 # The dataset
@@ -90,12 +100,6 @@ CMP_bbs_pcap_join_pcaponly_pcapsum<-CMP_bbs_pcap_join_pcaponly %>%
 
 CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_pcapsum,var="simp_plot")
 
-```
-
-We can also take a look at this dataset to ensure that it is what we expect.
-
-```{r}
-head(CMP_bbs_pcap_join_pcaponly_pcapsum)
 ```
 
 This is a pretty unwieldly dataset at present - we have 164 rows (representing our BBS/PCAP plots) and 131 columns. Out of those 131 columns, 104 are unique species (designated with four-letter codes), so most of the first 27 covariates are essentially our "predictors" - in this case, our PCAP data.
@@ -158,7 +162,7 @@ birdcomm_bin<- birdcomm_bin %>% mutate_if(is.numeric, ~1 * (. >= 1))
 
 One of the most common approaches for unconstrained ordination is called Principal Components Analysis (PCA). I have illustrated two approaches for this below - using either the prcomp() function or vegan's rda() function (which we will use a bit more below!).
 
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 PCA.res<-prcomp(birdcomm_bin, scale=T)
 
 biplot(PCA.res)
@@ -167,7 +171,7 @@ title("PCA (prcomp version)")
 
 Personally, I find rda() to be much easier to use, so I tend to use it preferentially. Here is a slightly more complicated plot compared to the above - this time with convex hulls and points colored by reservation.
 
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 reserv<-factor(toupper(CMP_bbs_pcap_join_pcaponly_pcapsum$reservatio))
 colpal_reserv<-rainbow(length(levels(reserv)))
 
@@ -196,9 +200,9 @@ while a bit hard to interpret, plots within Rocky River (RR) seem to be the most
 
 ### metric multidimensional scaling (Principal Coordinates Analysis)
 
-You can think of this as a distance-based analog to PCA. 
+You can think of this as a distance-based analog to PCA. In this case, since we are using Bray-Curtis distances on binary data (presence/absence), this is equivalent to Sorensen's index. 
 
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+```{r,warning=FALSE,error=FALSE,message=FALSE, echo = FALSE}
 bird_pcoa<-capscale(birdcomm_bin~1,distance="bray")
 
 plot(bird_pcoa,type="n",main="PCoA") 
@@ -207,7 +211,72 @@ text(bird_pcoa,display="species",col="red",cex=0.6)
 
 points(bird_pcoa,display="sites",pch=16) #adds filled circles for sites
 
+```
 
+
+
+### non-metric multidimensional scaling
+
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
+bird_nmds<-metaMDS(birdcomm_bin,distance = "bray",trymax = 400,k=3,trace=FALSE)
+
+
+plot(bird_nmds,type="n",main="NMDS") 
+
+text(bird_nmds,display="species",col="red",cex=0.6) 
+
+points(bird_nmds,display="sites",pch=16) #adds filled circles for sites
+
+stressplot(bird_nmds)
+
+
+```
+
+### bird species most associated with community differences
+
+We can also look at which birds are most differentiated across communities for both the PCOA and NMDS ordinations. The below code essentially a) relates individual bird presence/absence to the final PCOA ordination, b) extracts p-values for associations with MDS1 and 2 (the first two ordination axes), and c) selects only those birds that are most differentiated at p less than or equal to 0.001. We will do so for the PCA, PCOA, and NMDS.
+
+For all of these analyses, keep in mind that these are differentiated across *plots*, rather than reservations. We will explore a way to identify reservation-level differentiated species a litle bit below.
+
+Here is the PCA:
+
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
+p_unconc<-rda(birdcomm_bin,scale=T)
+
+fitpca <- envfit(p_unconc, birdcomm_bin, perm = 999) 
+
+# extract p-values for each species
+fitpca_pvals <- fitpca$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fitpca_spp <- fitpca %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitpca_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+
+fitpca_spp
+```
+
+**47 species** were identified as significantly contributing to variation between plots. These are my best attempts to break these down by typical migratory patterns for each species in Ohio (courtesy of www.allaboutbirds.org).
+
+Migratory, breeding range in Ohio: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Bluebird, Eastern Kingbird, Eastern Towhee, Eastern Wood-Pewee,  Gray Catbird, Great-Crested Flycatcher, Hooded Warbler, House Wren, Indigo Bunting, Killdeer, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **27 species**
+
+Year-round Ohio resident: American Crow, American Kestrel, Black-Capped Chickadee, Brown-Headed Cowbird, Cedar Waxwing, Common Grackle, Eastern Meadowlark, European Starling, Hairy Woodpecker, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, Tufted Titmouse, Turkey Vulture, White-breasted Nuthatch = **19 species**
+
+Migratory, non-breeding range in Ohio: Dark-eyed Junco = **1 species**
+
+We can repeat this procedure for the PCOA results too. Whereas PCA (above) was based on summarizing our bird community in the fewest number of axes that explain the most *variance*, PCOA is trying to maximize *distance* between plots. This is somewhat semantic in many cases, but will lead to differing representations of which birds are most associated with ordination axes.
+
+
+
+Anyway! on to the PCOA: 
+
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 # envfit() takes the output of metaMDS() and the species matrix you created
 fitpcoa <- envfit(bird_pcoa, birdcomm_bin, perm = 999) 
 
@@ -225,24 +294,21 @@ fit_pcoa_spp <- fitpcoa %>%
   full_join(., fitpcoa_pvals, by = "species") %>% 
   filter(pvals == 0.001)
 
-
-
-```
-
-### non-metric multidimensional scaling
-
-```{r,warning=FALSE,error=FALSE,message=FALSE}
-bird_nmds<-metaMDS(birdcomm_bin,distance = "bray",trymax = 400,k=3)
-plot(bird_nmds)
-
-stressplot(bird_nmds)
-
+fit_pcoa_spp
 
 ```
 
-We can also use the NMDS to determine species that are most differentiated across site (=plots).
+So, now we have **40 species** that contribute most to community distance between plots. 
 
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+Migratory, breeding range in Ohio:  Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Chimney Swift, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **25 species**
+
+Year-round Ohio resident: American Robin,  Brown-Headed Cowbird, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch = **14 species**
+
+Migratory, non-breeding range in Ohio: Dark-eyed Junco = **1 species**
+
+and now the NMDS:
+
+```{r,warning=FALSE,error=FALSE,message=FALSE, echo = FALSE}
 
 CMP_bbs_pcap_join_pcaponly_pcapsum$site<-rownames(CMP_bbs_pcap_join_pcaponly_pcapsum)
 
@@ -250,13 +316,6 @@ plot_df <- scores(bird_nmds, display = "sites") %>%
   as.data.frame() %>% 
   rownames_to_column("site") %>% 
   full_join(CMP_bbs_pcap_join_pcaponly_pcapsum, by = "site")
-
-plot_nmds <- ggplot(plot_df, aes(x = NMDS1, y = NMDS2, color = reservatio)) +
-  geom_point(size = 3, alpha = 0.8) +
-  stat_ellipse(linetype = 2, size = 1) +
-  labs(title = "NMDS")
-plot_nmds
-
 
 # envfit() takes the output of metaMDS() and the species matrix you created
 fitnmds <- envfit(bird_nmds, birdcomm_bin, perm = 999) 
@@ -275,42 +334,52 @@ fit_spp <- fitnmds %>%
   full_join(., fitnmds_pvals, by = "species") %>% 
   filter(pvals == 0.001)
 
-#nmds_plot_new <- ggplot(plot_df, aes(x = NMDS1, y = NMDS2)) +
-#  coord_fixed() +
-#  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
-#  stat_ellipse(aes(color = reservatio)) +
-#  geom_segment(data = fit_spp, aes(x = 0, xend = NMDS1, y = 0, yend = NMDS2),
-#               arrow = arrow(length = unit(0.25, "cm")),
-#               col = "black") +
-#  geom_text(data = fit_spp, aes(label = species)) 
-#nmds_plot_new
-```
+nmds_plot_new <- ggplot(plot_df, aes(x = NMDS1, y = NMDS2)) +
+  coord_fixed() +
+  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
+  stat_ellipse(aes(color = reservatio)) +
+  geom_segment(data = fit_spp, aes(x = 0, xend = NMDS1, y = 0, yend = NMDS2),
+               col = "black") +
+  geom_text(data = fit_spp, aes(label = species)) 
+nmds_plot_new
 
-This is a bit hard to interpret, but this table:
-
-```{r, echo = FALSE}
-fitnmds_pvals
-```
-
-reports the species that contribute most to community-level differences.
-
-We can then select only those species that are most differentiated (by looking back at the fit_spp object from above - so p-values less than or equal to 0.001):
-
-```{r}
 fit_spp
 ```
 
-Some interesting species show up here. 
+So, now we have **41 species** that contribute most to community distance between plots. 
 
-Summer Migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo
+Migratory, breeding range in Ohio:  Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo
 
-Residents:American Robin, Black-Capped Chickadee, Brown-Headed Cowbird, Canada Goose, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch
+Year-round Ohio resident: American Robin, Black-Capped Chickadee, Brown-Headed Cowbird, Canada Goose, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch
 
-Winter Migrants: Dark-eyed Junco
+Migratory, non-breeding range in Ohio: Dark-eyed Junco
 
-So 24 summer migrants, 16 residents, and 1 winter migrant. Keep in mind that these are differentiated across *plots*, rather than reservations. We will explore a way to identify reservation-level differentiated species below. 
+ 
+While these three sets of species are pretty similar, we can also take a look at which species are different across approaches.
+ 
+```{r}
+outersect(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)
+```
+
+So American Crow, American Kestrel, Canada Goose, Chimney Swift, Eastern Bluebird, Eastern Meadowlark, Easter Towhee, Great-Crested Flycatcher, Hairy Woodpecker, Killdeer, Tufted Titmouse, and Turkey Vulture. At least to me, nothing particularly sticks out as a commonality across these species, but it may make just as much sense to simply pool these species across approaches:
+
+```{r}
+sort(unique(c(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)))
+```
+
+This gives us a list of 52 bird species that seem to be particularly differentiated/variable across plots. That is precisely half of the total number of species in the overall dataset. 
+
+As we proceed, we will begin layering on our environmental datasets using three main approaches: constrained ordination, linear models of species richness, and multi-species occupancy models.
 
 ## constrained
+
+Whereas the ordination approaches above were focused on unconstrained ordination - in this case, exploring how species are arranged between sample sites - there is an entire suite of approaches that address how environmental gradients shape community assemblages among sample sites. These are called **constrained** ordination approaches. I am personally a huge proponent of redundancy analysis (RDA) as a flexible constrained ordination approach. Taken from the GUSTA ME tutorial on RDA: 
+
+"*RDA can also be considered a constrained version of principal components analysis (PCA), wherein canonical axes - built from linear combinations of response variables - must also be linear combinations of the explanatory variables (i.e. fitted by [multiple linear regression]). The RDA approach generates one ordination in the space defined by the matrix of response variables and another in the space defined by the matrix of explanatory variables.*"
+
+So, in essence, the ordination plot produced will depict an optimal arrangement of environmental axes (RDA1, 2, etc.) that maximally explains variation in the species dataset. 
+
+We are going to use stepwise selection to explore which PCAP covariates most explain plot-level differences.
 
 ```{r}
 
@@ -326,18 +395,65 @@ set.seed(12345)
 p_step<- ordistep(p_0, scope = formula(p_1))
 p_step
 
+anova(p_step)
 anova(p_step,by="term")
 anova(p_step,by="axis")
 ordiplot(p_step,scaling=3)
 ```
 
+So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species. As a quick caveat, these four variables only explain about 7.3% of the variation, as seen here (red is our environmental axes, black is our unconstrained axes):
+
+```{r}
+constrained_eig <- p_step$CCA$eig/p_step$tot.chi*100
+unconstrained_eig <- p_step$CA$eig/p_step$tot.chi*100
+expl_var <- c(constrained_eig, unconstrained_eig)
+barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('black', length (unconstrained_eig))),
+         las = 2, ylab = '% variation')
+```
+
+This is not that terribly uncommon for redundancy analyses - It is often difficult to find environmental gradients that explain all of the variance in large datasets like ours. Biologically, we likely do not necessarily expect that a single environmental gradient alone drives all of the variation in bird presence/absence, and intuitively know that we also have to worry about observer effects, weather, and other unmeasured characteristics. Regardless of any of the above, the ordination is significant - as are the relationships with these covariates, so we can safely say that nearly 10% of the variation in our bird species dataset is explainable by these 4 PCAP covariates!
+
+We can also explore bird species most significantly associated with our constrained ordination axes, too. 
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+# envfit() takes the output of metaMDS() and the species matrix you created
+fitconcrda <- envfit(p_step, birdcomm_bin, perm = 999) 
+
+# extract p-values for each species
+fitconcrda_pvals <- fitconcrda$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fitconcrda_spp <- fitconcrda %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitconcrda_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+
+
+```
+
+OK - this is getting towards our main analytical goals! Let's sort by scores for that first environmental axis and plot these in order:
+
+```{r,fig.height=12}
+fitconcrda_spp_order<-fitconcrda_spp[order(fitconcrda_spp$RDA1),]
+fitconcrda_spp_order$species<-factor(fitconcrda_spp_order$species,levels=fitconcrda_spp_order$species)
+
+
+ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)
+
+```
+
+This is a pretty neat plot - Acadian Flycatcher, Scarlet Tanager, Eastern Wood-Pewee, White-breasted Nuthatch, Hooded Warbler, Red-Eyed Vireo, Dark-Eyed Junco, Wood Thrush, Hairy Woodpeckers, and Lousiana Water-Thrush all appear to be associated with higher sedge, seedless vascular plant, and dicot cover and lower cover of tolerant plants. In contrast, Yellow Warblers, Orchard Orioles, Red-Winged Blackbirds, European Starlings, Warbling Vireos, Song Sparrows, Grey Catbirds, Tree Swallows, Mourning Doves, and Cedar Waxwings are all associated with more tolerant plants. 
 
 ### constrained - sites
 
-Might be a more useful way to think about differentially-abundant species?
+While we have already explored environmental associations, we might also want to know what species are most differentiated between reservations. We will then use similar code to that used above to explore species that are most differentiated between reservations.
 
 ```{r}
-
 
 p_reservations<-rda(birdcomm_bin~reservatio,CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
 
@@ -374,6 +490,7 @@ fit_reservations_spp <- reservations_fitbirds %>%
   rownames_to_column("species") %>% 
   full_join(., fitreservations_pvals, by = "species") %>% 
   filter(pvals == 0.001)
+fit_reservations_spp
 
 fit_reservations <- reservations_fit %>% 
   scores(., display = "factors") %>% 
@@ -389,50 +506,46 @@ rda_reservation_plot_new <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)
   geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))
 rda_reservation_plot_new
 
-rda_reservations_species <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
+```
+
+Interesting! So when we consider reservation-of-origin, Hinckley seems to have a pretty unique bird community overall, and groups negatively along RDA1. In contrast, Brookside, Ohio and Erie Canal, and Washington all group positively along RDA1 - and are all quite heavily urbanized. 
+
+While I personally think the environmental gradient analyses are a bit more interesting, this does highlight reservations that are more or less distinct in bird community space. We can also plot just the reservations alone too:
+
+```{r}
+ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
   coord_fixed() +
-  geom_text(data = fit_reservations_spp, aes(label = species))+
-  geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))
-rda_reservations_species
-
-
+  geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))+xlim(-2,4)+ylim(-4,2)
 ```
 
 ### Now pRDA - with variance partitioning.
+
+As a final sanity check, it can sometimes be difficult to disentangle geographic effects from environmental effects in these sorts of analyses. For example, what if (hypothetically) cover of seedless vascular plants is negatively associated with geographic coordinates? Thus, we might want to briefly check if the variance explained by our environmental axes is (or is not) confounded with geography. To do so, we will use the varpart() function, which partitions variance between model components:
 
 ```{r}
 
 vegecomm_latlong<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
 
-p_beststep_partial<-rda(birdcomm_bin~tol_rel + svp + dicot + cyper + small_tree + Condition(longitude+latitude),data=vegecomm_latlong)
-
-pcap_geog<-varpart(birdcomm_bin,~ tol_rel + svp + dicot + cyper + small_tree,~longitude+latitude,data=vegecomm_latlong)
+pcap_geog<-varpart(birdcomm_bin,~ tol_rel + svp + dicot + cyper,~longitude+latitude,data=vegecomm_latlong)
 plot(pcap_geog)
-
-ordiplot(p_beststep_partial)
 ```
 
-So - most of this variation is associated with these top covariates, and NOT necessarily with latitude and longitude alone.
-
-
+So - most of this variation is associated with these top covariates (X1), and NOT with latitude and longitude alone (X2). Good to see - this means we can be confident that these are actual environmental effects!
 
 ## community richness metrics
 
 Next, we can explore the relationships between species richness and plot characteristics. We will start with plot-level explorations. 
 
-
 ### plot-level analyses
 
 #### plot-level richness and various indicators
 
-Now, we will produce some exploratory models and plots of basic indicators of vegetative quality, including the Floristic Quality Indicator (FQI) and the Vegetative Index of Biotic Integrity (VIBI).
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+Now, we will produce some exploratory models and plots of richness against basic indicators of vegetative quality, including the Floristic Quality Indicator (FQI) and the Vegetative Index of Biotic Integrity (VIBI).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 S <- specnumber(birdcomm_bin)
 
-
 vegecomm_richness<-cbind(vegecomm,S)
-
-cor(vegecomm_richness)
 
 S_vibi<-lm(S~vibifq,vegecomm_richness)
 summary(S_vibi)
@@ -440,10 +553,9 @@ summary(S_vibi)
 S_fqi<-lm(S~fqi,vegecomm_richness)
 summary(S_fqi)
 
-ggplot(aes(x=vibifq,y=S),data=vegecomm_richness)+geom_point()
+ggplot(aes(x=vibifq,y=S),data=vegecomm_richness)+geom_point()+geom_smooth()
 
-ggplot(aes(x=fqi,y=S),data=vegecomm_richness)+geom_point()
-
+ggplot(aes(x=fqi,y=S),data=vegecomm_richness)+geom_point()+geom_smooth()
 
 ```
 
@@ -451,18 +563,13 @@ Somewhat unexpectedly, this seems to suggest that higher VIBI scores actually pr
 
 We can generate a summary of the number of surveys for each plot.
 
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 
 pcap_surveynumber<-CMP_bbs_pcap_join_pcaponly %>% 
   group_by(simp_plot) %>%
   summarise(n=n_distinct(date)
             ) 
 vegecomm_richness$surveycount<-pcap_surveynumber$n
-
-specaccum(birdcomm_bin,w=pcap_surveynumber$n,method="random")
-
-vegecomm_richness
-
 
 CMP_bbs_pcap_join_pcaponly_pcapsum_date<-CMP_bbs_pcap_join_pcaponly %>% 
   group_by(simp_plot, reservatio,date,species_4_) %>%
@@ -505,10 +612,9 @@ plot(rarefylist[[1]])
 
 ```
 
-So the number of surveys clearly has an effect on the species richness of the site. This is somewhat difficult to account for, but we will attempt to do so using mixed effects models. 
+So the number of surveys clearly has an effect on the species richness of the site. This is somewhat difficult to account for, but we will attempt to do so using mixed effects models. I then use Akaike's Information Criterion (AIC for short) to rank these models. The lowest number is the best, and any model within 2 AIC of the top model is potentially worth interpreting.
 
-
-```{r,warning=FALSE,error=FALSE,message=FALSE}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 simp_plot<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$simp_plot)
 
 date<-strptime(CMP_bbs_pcap_join_pcaponly_pcapsum_date$date,format="%m/%d/%Y")
@@ -516,7 +622,6 @@ date<-strptime(CMP_bbs_pcap_join_pcaponly_pcapsum_date$date,format="%m/%d/%Y")
 month<-month(date)
 
 S_plotdate<-specnumber(birds_bycount)
-
 
 Rich_vibifq<-lmer(S_plotdate~vibifq+(1|simp_plot),vegecomm_bycount)
 summary(Rich_vibifq)
@@ -582,7 +687,7 @@ aictab(richmods)
 
 ```
 
-So richness - at a plot level, and after accounting for plot identity - is determined by how many tolerant species are in the associated plot.
+So richness - at a plot level, and after accounting for plot identity - is determined by how many tolerant species are in the associated plot. And this is much more predictive than any other model. 
 
 Here is the plot for this top model:
 
@@ -603,7 +708,8 @@ anova(Rich_tol_rel, Rich_tol_rel_fixed)
 
 This confirms that we chose correctly - the mixed effects model fits better than the fixed effects-only model.
 
-We can also inspect how this observation-level, mixed effect model compares to a more consolidated, plot-level view (in other words - a view that just looks at richness at a plot level - aggregating over observations).
+We can also inspect how this observation-level mixed effect model compares to a  plot-level, fixed effect model (in other words - a view that just looks at richness at a plot level - aggregating over observations).
+
 ```{r}
 S_tol_rel<-lm(S~tol_rel,vegecomm_richness)
 confint(S_tol_rel)
@@ -614,17 +720,11 @@ confint(Rich_tol_rel)
 
 We can see that, while the covariate estimate for the plot-level model is higher, it is also estimated with much more variance (its confidence intervals are wider). This is not surprising - our functional sample size for this dataset is 164 plots. In contrast, while the observation-level mixed-effects model has a lower covariate estimate, we have tighter confidence intervals around this estimate - likely by virtue of a larger number of samples and a more effectively parameterized model. 
 
-#### plot-level distances and various indicators
-
-```{r}
-birdcomm_bin_bray<-vegdist(birdcomm_bin,method = "bray")
-
-plot_bray_all<-adonis2(birdcomm_bin_bray~.,vegecomm,permutations = 9999)
-plot_bray_all
-```
-
 ### reservation-level analyses
-```{r}
+
+Now we are going to re-summarize this dataset at a reservation-level. While we will have limited power for many comparisons of interest, this could provide some indication of whether covariate relationships vary across scales. 
+
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 
 birdcomm_reserv<-CMP_bbs_pcap_join_pcaponly %>%
   group_by(reservatio,species_4_) %>%
@@ -638,8 +738,6 @@ birdcomm_reserv<-birdcomm_reserv[,-1]
 birdcomm_reserv_bin<-birdcomm_reserv %>% mutate_if(is.numeric, ~1 * (. >= 1))
 
 reservspcount<-specnumber(birdcomm_reserv_bin)
-reservspcount
-
 vegecomm_reserv<-CMP_bbs_pcap_join_pcaponly %>%
   group_by(reservatio) %>%
   summarise(vibifq=mean(vibi_fq),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
@@ -658,7 +756,6 @@ vegecomm_reserv<-CMP_bbs_pcap_join_pcaponly %>%
             numsurveys=n_distinct(paste0(simp_plot,date)))
 vegecomm_reserv_richness<-cbind(vegecomm_reserv,reservspcount)
 
-cor(vegecomm_reserv_richness[,-1])
 ggplot(aes(x=vibifq,y=reservspcount),data=vegecomm_reserv_richness)+geom_point()+geom_smooth(method="lm")
 
 
@@ -669,11 +766,7 @@ plot(reservation_spaccum)
 
 This doesn't quite get at what we want - this displays species accumulation across reservations after accounting for survey effort per reservation. Let's try exploring reservation-by-reservation rarefaction with the previous observation-level dataset.
 
-```{r}
-birds_bycount
-
-vegecomm_bycount
-
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 
 index<-as.numeric(factor(CMP_bbs_pcap_join_pcaponly_pcapsum_date$reservatio))
 index_unique<-unique(index)
@@ -697,16 +790,13 @@ for(i in index_unique){
   birds_temp<-birds_bycount[index %in% i,]
   interpolatedrichness_n3$richness[i]<- predict(specaccum(birds_temp),newdata=3)
 }
-
-
 ```
-
 
 With the plot-level data, we could easily account for variation in survey effort across plots with a mixed model design, but this case is a bit more complicated. We are interested in reservation-level species richness, but know that reservations were visited different numbers of times - based on the number of plots and the number of surveys/plot. Thus, the easiest thing to start with is simply using species richness estimates interpolated to the least number of surveys per reservation (3, in our case).
 
 Now we can proceed with exploring richness patterns across reservations.
 
-```{r}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 
 vegecomm_reserv_richness$interrich_n3<-interpolatedrichness_n3$richness
 
@@ -777,7 +867,7 @@ although our power is a bit limited above, it does appear that the Vegetative In
 
 we can also plot out richness for each site:
 
-```{r}
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 ggplot(aes(x=reservatio,y=reservspcount),data=vegecomm_reserv_richness)+geom_col()
 
 ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col()
@@ -789,14 +879,10 @@ In confirmation of our prior ordination plots, it now appears that Rocky River i
 
 #### reservation shape features and species richness
 
-While these vegetative associations are certainly important, it is often helpful to also think about how the shape of our reservations influences the species found within them. There is a rich body of literature on the effects of landscape context and configuration on 
+While these vegetative associations are certainly important, it is often helpful to also think about how the shape of our reservations influences the species found within them. There is a rich body of literature on the effects of landscape context and configuration on ecological processes and patterns - and this is an area I am particularly interested in!
 
-```{r}
-
-vegecomm_reserv_richness
+```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 structuralconnectivity<-read.csv("Reservations_LandMetrics_bbs.csv",header=T)
-vegecomm_reserv_richness$reservatio
-structuralconnectivity$resID
 
 vegecomm_reserv_richness_struct<-cbind(vegecomm_reserv_richness,structuralconnectivity)
 
@@ -1643,7 +1729,7 @@ waicOcc(out.ms.fqi)
 
 we can also print out a table of Widely Applicable Information Criterion (wAIC) values. The lower this is, the better the model fit. 
 
-```{r, eval = FALSE}
+```{r, eval = FALSE,out.width="200%"}
 AICc_table<-tibble(.rows = 10)
 
 AICc_table$model<-c("Null","p ~ day", "p ~ day + time-of-day", "p ~ day^2 + day +tod", "p ~ day, psi ~ vibi-fq", "p ~ day, psi ~ vibi-fq-notree","p ~ day, psi ~ tolerant + seedless vascular + dicots + cyperaceae + small trees","p~day,psi~tolerant","p~day,psi~tolerant + seedless vascular + dicot + cyperaceae + small trees +shrubs+hydro+subcanopy+canopy","p~day,psi~fqi")
@@ -1661,13 +1747,13 @@ AICc_table[order(AICc_table$wAIC),]
 ```
 
 
-So, the top model is the global, followed by the fullrda model.
-
-
+So, the top model is the global, followed by the stepwise-selected rda model.
 
 Now, we plot based on this top model.
 
 ### plotting using an RShiny app
+
+While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: https://testudinidude.shinyapps.io/bbsapp/. 
 
 ```{r, echo = FALSE, eval = FALSE}
 
@@ -1741,13 +1827,15 @@ saveRDS(sppnames,"sppnames.Rdata")
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE,out.height="400%",out.width="150%"}
 knitr::include_app("https://testudinidude.shinyapps.io/bbsapp/")
 ```
 
 ### covariate plotting
 
-```{r}
+Finally, we can also run some plots depicting covariate effects for each species. These should make it clear if and when species appear to be particularly related to certain vegetative characteristics - and thus may serve as "indicators" for these characteristics. 
+
+```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
 #options(max.print=1000000)
 #sink("outmsglobal_90percent.txt")
 #print(summary(out.ms.global,level="species",quantiles=c(0.05,0.5,0.95)))
@@ -1763,7 +1851,7 @@ spp_tolorder<-factor(covars_tolerance$Species,levels=covars_tolerance$Species)
 
 covars_tolerance$spporder<-spp_tolorder
 
-ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.1652)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.1652)+theme_classic(base_size=12)
 
 covars_svp<-subset(covars,covars$Covariate=="svp")
 
@@ -1774,7 +1862,7 @@ spp_svporder<-factor(covars_svp$Species,levels=covars_svp$Species)
 
 covars_svp$spporder<-spp_svporder
 
-ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0594)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0594)+theme_classic(base_size=12)
 
 
 covars_dicot<-subset(covars,covars$Covariate=="dicot")
@@ -1786,7 +1874,7 @@ spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
 
 covars_dicot$spporder<-spp_dicotorder
 
-ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2461)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2461)+theme_classic(base_size=12)
 
 
 covars_cyper<-subset(covars,covars$Covariate=="cyper")
@@ -1798,7 +1886,7 @@ spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
 
 covars_cyper$spporder<-spp_cyperorder
 
-ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.1375)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.1375)+theme_classic(base_size=12)
 
 
 covars_smalltree<-subset(covars,covars$Covariate=="small_tree")
@@ -1810,7 +1898,7 @@ spp_treeorder<-factor(covars_smalltree$Species,levels=covars_smalltree$Species)
 
 covars_smalltree$spporder<-spp_treeorder
 
-ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.0672)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.0672)+theme_classic(base_size=12)
 
 
 
@@ -1823,7 +1911,7 @@ spp_shruborder<-factor(covars_shrub$Species,levels=covars_shrub$Species)
 
 covars_shrub$spporder<-spp_shruborder
 
-ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.2181)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.2181)+theme_classic(base_size=12)
 
 
 covars_hydro<-subset(covars,covars$Covariate=="hydro")
@@ -1834,7 +1922,7 @@ spp_hydroorder<-factor(covars_hydro$Species,levels=covars_hydro$Species)
 
 covars_hydro$spporder<-spp_hydroorder
 
-ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2068)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2068)+theme_classic(base_size=12)
 
 covars_subcanopy<-subset(covars,covars$Covariate=="subcanopy")
 
@@ -1844,7 +1932,7 @@ spp_subcanopyorder<-factor(covars_subcanopy$Species,levels=covars_subcanopy$Spec
 
 covars_subcanopy$spporder<-spp_subcanopyorder
 
-ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0393)+theme_classic(base_size=16)
+ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0393)+theme_classic(base_size=12)
 
 covars_canopy<-subset(covars,covars$Covariate=="canopy")
 
@@ -1854,6 +1942,5 @@ spp_canopyorder<-factor(covars_canopy$Species,levels=covars_canopy$Species)
 
 covars_canopy$spporder<-spp_canopyorder
 
-ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0702)+theme_classic(base_size=16)
-
+ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0702)+theme_classic(base_size=12)
 ```
