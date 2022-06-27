@@ -253,12 +253,12 @@ div.tocify {
 
 <div id="section-the-dataset" class="section level1">
 <h1>The dataset</h1>
-<p>Tim Krynak, Erik Shaffer, Jennifer Brumsfield, and other Cleveland Metroparks and affiliated colleagues conducted Breeding Bird Surveys (BBS) at a total of 211 routes between 2017 and 2021. 164 of these routes overlapped with long-term vegetation monitoring efforts through the Cleveland Metroparks Plant Community Assessment Program (PCAP). This provided an excellent opportunity to explore the potential relationships between vegetative composition, landscape structure, and breeding bird ecology and community composition.</p>
+<p>Tim Krynak, Erik Shaffer, Jen Brumfield, and other Cleveland Metroparks and affiliated colleagues conducted Breeding Bird Surveys (BBS) at a total of 211 routes between 2017 and 2021. 164 of these routes overlapped with long-term vegetation monitoring efforts through the Cleveland Metroparks Plant Community Assessment Program (PCAP). This provided an excellent opportunity to explore the potential relationships between vegetative composition, landscape structure, and breeding bird ecology and community composition.</p>
 </div>
 <div id="section-initial-processing" class="section level1">
 <h1>Initial processing</h1>
 <p>First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time.</p>
-<pre class="r"><code>CMP_bbs_pcap_join&lt;-read.csv(&quot;CMP_bbs_pcapjoin.csv&quot;,header=T)
+<pre class="r"><code>CMP_bbs_pcap_join&lt;-read.csv(&quot;G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin.csv&quot;,header=T)
 CMP_bbs_pcap_join_pcaponly&lt;-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),]
 
 datetime&lt;-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format=&quot;%m/%d/%Y %H:%M&quot;)
