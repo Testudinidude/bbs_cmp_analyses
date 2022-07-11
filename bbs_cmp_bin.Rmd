@@ -48,7 +48,18 @@ library(broom)
 library(AICcmodavg)
 library(indicspecies)
 library(lme4)
+library(MASS)
+library(cooccur)
+library(igraph)
+library(visNetwork)
 
+#options(repos = c(
+#    fawda123 = 'https://fawda123.r-universe.dev',
+#    CRAN = 'https://cloud.r-project.org'))
+
+# Install ggord
+#install.packages('ggord')
+library(ggord)
 
 #code from here: https://www.r-bloggers.com/2011/11/outersect-the-opposite-of-rs-intersect-function/#:~:text=setdiff()%20produces%20all%20elements,vector%20(i.e.%20is%20asymmetric).
 outersect <- function(x, y, ...) {
@@ -56,6 +67,8 @@ outersect <- function(x, y, ...) {
   duplicates <- big.vec[duplicated(big.vec)]
   setdiff(big.vec, unique(duplicates))
 }
+
+lda_birdcomm<-readRDS("lda_birdcomm.rds")
 
 ```
 
@@ -68,7 +81,7 @@ Tim Krynak, Erik Shaffer, Jen Brumfield, and other Cleveland Metroparks and affi
 First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time. 
 
 ```{r}
-CMP_bbs_pcap_join<-read.csv("G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin.csv",header=T)
+CMP_bbs_pcap_join<-read.csv("G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin_elimWC.csv",header=T)
 CMP_bbs_pcap_join_pcaponly<-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),]
 
 datetime<-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format="%m/%d/%Y %H:%M")
@@ -80,7 +93,7 @@ Next, we need to start grouping this dataset for downsteram analysis. This invol
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 CMP_bbs_pcap_join_pcaponly_pcapsum<-CMP_bbs_pcap_join_pcaponly %>% 
-  group_by(simp_plot, reservatio,species_4_) %>%
+  group_by(simp_plot, reservatio,community,species_4_) %>%
   summarise(n=n(),longitude=mean(xcoord), latitude=mean(ycoord),vibifq=mean(vibi_fq),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
             dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
             hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
@@ -108,7 +121,7 @@ Let's do a bit more processing on this dataset to get it in shape for downstream
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 
-birdcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,27:(ncol(CMP_bbs_pcap_join_pcaponly_pcapsum)-1)]
+birdcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,28:(ncol(CMP_bbs_pcap_join_pcaponly_pcapsum))]
 
 birdcomm[is.na(birdcomm)] <- 0
 
@@ -117,7 +130,7 @@ birdcomm[is.na(birdcomm)] <- 0
 Next, we separate out our PCAP data. 
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
-vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,4:25]
+vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,5:26]
 
 ```
 
@@ -152,24 +165,33 @@ In this section, we will be exploring ways of exploring the bird dataset on its 
 
 First, we must reclassify our bird community data onto a binary scale - ranging from 0 (no detection) to 1 (detection).
 
+We also set our color palette for residency status, so that Red = resident, Green = short-distance migrant, and Blue = neotropical migrant.
+
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
+
 
 birdcomm_bin<-birdcomm
 
 birdcomm_bin<- birdcomm_bin %>% mutate_if(is.numeric, ~1 * (. >= 1))
 
+BBSMigrants<-read.csv("G:/NaturalResources/Byer/datasets/BBS/BBS Migants.csv",header=T)
+
+BBSMigrants_sub<-BBSMigrants[BBSMigrants$SpeciesCode %in% colnames(birdcomm_bin),]
+
+Residency<-BBSMigrants_sub$Residency
+
+color_resid<-Residency
+
+color_resid[color_resid %in% "NE"]<-"blue"
+
+color_resid[color_resid %in% "M"]<-"green"
+
+color_resid[color_resid %in% "R"]<-"red"
+
+
 ```
 
-One of the most common approaches for unconstrained ordination is called Principal Components Analysis (PCA). I have illustrated two approaches for this below - using either the prcomp() function or vegan's rda() function (which we will use a bit more below!).
-
-```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
-PCA.res<-prcomp(birdcomm_bin, scale=T)
-
-biplot(PCA.res)
-title("PCA (prcomp version)")
-```
-
-Personally, I find rda() to be much easier to use, so I tend to use it preferentially. Here is a slightly more complicated plot compared to the above - this time with convex hulls and points colored by reservation.
+One of the most common approaches for unconstrained ordination is called Principal Components Analysis (PCA). I have illustrated vegan's rda() function (which we will use a bit more below!). Out of the available options, I find rda() to be much easier to use, so I tend to use it preferentially. Here is a plot with convex hulls and points colored by reservation.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 reserv<-factor(toupper(CMP_bbs_pcap_join_pcaponly_pcapsum$reservatio))
@@ -196,8 +218,6 @@ legend(x="right", legend=levels(reserv), col=colpal_reserv,pch = 1,cex=0.5)
 
 while a bit hard to interpret, plots within Rocky River (RR) seem to be the most variable - and it might be that we see higher diversity in that area. We will see as we proceed if that is true.
 
-
-
 ### metric multidimensional scaling (Principal Coordinates Analysis)
 
 You can think of this as a distance-based analog to PCA. In this case, since we are using Bray-Curtis distances on binary data (presence/absence), this is equivalent to Sorensen's index. 
@@ -207,7 +227,7 @@ bird_pcoa<-capscale(birdcomm_bin~1,distance="bray")
 
 plot(bird_pcoa,type="n",main="PCoA") 
 
-text(bird_pcoa,display="species",col="red",cex=0.6) 
+text(bird_pcoa,display="species",col=color_resid,cex=0.6) 
 
 points(bird_pcoa,display="sites",pch=16) #adds filled circles for sites
 
@@ -223,11 +243,9 @@ bird_nmds<-metaMDS(birdcomm_bin,distance = "bray",trymax = 400,k=3,trace=FALSE)
 
 plot(bird_nmds,type="n",main="NMDS") 
 
-text(bird_nmds,display="species",col="red",cex=0.6) 
+text(bird_nmds,display="species",col=color_resid,cex=0.6) 
 
 points(bird_nmds,display="sites",pch=16) #adds filled circles for sites
-
-stressplot(bird_nmds)
 
 
 ```
@@ -264,15 +282,15 @@ fitpca_spp
 
 **47 species** were identified as significantly contributing to variation between plots. These are my best attempts to break these down by typical migratory patterns for each species in Ohio (courtesy of www.allaboutbirds.org).
 
-Migratory, breeding range in Ohio: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Bluebird, Eastern Kingbird, Eastern Towhee, Eastern Wood-Pewee,  Gray Catbird, Great-Crested Flycatcher, Hooded Warbler, House Wren, Indigo Bunting, Killdeer, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **27 species**
+Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Great Crested Flycatcher, Hooded Warbler, Indigo Bunting, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **18 species**
 
-Year-round Ohio resident: American Crow, American Kestrel, Black-Capped Chickadee, Brown-Headed Cowbird, Cedar Waxwing, Common Grackle, Eastern Meadowlark, European Starling, Hairy Woodpecker, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, Tufted Titmouse, Turkey Vulture, White-breasted Nuthatch = **19 species**
+Resident: American Crow, American Kestrel, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **8 species** 
 
-Migratory, non-breeding range in Ohio: Dark-eyed Junco = **1 species**
+Short-distance migrant: American Goldfinch, Black-capped Chickadee, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Eastern Bluebird, Eastern Meadowlark, Field Sparrow, Gray Catbird, House Wren, Killdeer, Mourning Dove, Northern Flicker, Northern Rough-winged Swallow, Red-winged Blackbird, Tree Swallow, Turkey Vulture = **19 species**
+
+Resident or migratory: Canada Goose, Dark-eyed Junco = **2 species**
 
 We can repeat this procedure for the PCOA results too. Whereas PCA (above) was based on summarizing our bird community in the fewest number of axes that explain the most *variance*, PCOA is trying to maximize *distance* between plots. This is somewhat semantic in many cases, but will lead to differing representations of which birds are most associated with ordination axes.
-
-
 
 Anyway! on to the PCOA: 
 
@@ -298,13 +316,15 @@ fit_pcoa_spp
 
 ```
 
-So, now we have **40 species** that contribute most to community distance between plots. 
+So, now we have **44 species** that contribute most to community distance between plots. 
 
-Migratory, breeding range in Ohio:  Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Chimney Swift, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **25 species**
+Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Chimney Swift, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Hooded Warbler, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Ovenbird, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **21 species**
 
-Year-round Ohio resident: American Robin,  Brown-Headed Cowbird, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch = **14 species**
+Resident: European Starling, Hairy Woodpecker, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
 
-Migratory, non-breeding range in Ohio: Dark-eyed Junco = **1 species**
+Short-distance migrant: American Robin, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Eastern Towhee, Field Sparrow, Gray Catbird, House Wren, Mourning Dove, Northern Flicker, Northern Rough-winged Swallow, Red-winged Blackbird, Tree Swallow = **15 species**
+
+Resident or migratory: Dark-eyed Junco = **1 species**
 
 and now the NMDS:
 
@@ -346,28 +366,29 @@ nmds_plot_new
 fit_spp
 ```
 
-So, now we have **41 species** that contribute most to community distance between plots. 
+So, now we have **40 species** that contribute most to community distance between plots. 
 
-Migratory, breeding range in Ohio:  Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Blue-Gray Gnatcatcher, Brown Thrasher, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Gray Catbird, Hooded Warbler, House Wren, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-breasted Grosbeak, Red-eyed Vireo, Scarlet Tanager, Tree Swallow, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo
+Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Hooded Warbler, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **18 species**
 
-Year-round Ohio resident: American Robin, Black-Capped Chickadee, Brown-Headed Cowbird, Canada Goose, Cedar Waxwing, Common Grackle, European Starling, Field Sparrow, House Finch, House Sparrow, Mourning Dove, Northern Flicker, Pileated Woodpecker,  Red-winged Blackbird, Song Sparrow, White-breasted Nuthatch
+Resident: American Crow, European Starling, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
 
-Migratory, non-breeding range in Ohio: Dark-eyed Junco
+Short-distance migrant: American Robin, Black-Capped Chickadee, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Field Sparrow, Gray Catbird, House Wren, Mourning Dove, Northern Flicker,  Red-winged Blackbird, Tree Swallow = **14 species**
 
- 
+Resident or migratory: Dark-eyed Junco = **1 species**
+
 While these three sets of species are pretty similar, we can also take a look at which species are different across approaches.
  
 ```{r}
 outersect(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)
 ```
 
-So American Crow, American Kestrel, Canada Goose, Chimney Swift, Eastern Bluebird, Eastern Meadowlark, Easter Towhee, Great-Crested Flycatcher, Hairy Woodpecker, Killdeer, Tufted Titmouse, and Turkey Vulture. At least to me, nothing particularly sticks out as a commonality across these species, but it may make just as much sense to simply pool these species across approaches:
+So American Goldfinch, American Kestrel, Canada Goose, Chimney Swift, Eastern Bluebird, Eastern Meadowlark, Easter Towhee, Great-Crested Flycatcher, Killdeer, Ovenbird, Tufted Titmouse,  Turkey Vulture, and Veery. At least to me, nothing particularly sticks out as a commonality across these species, but it may make just as much sense to simply pool these species across approaches:
 
 ```{r}
 sort(unique(c(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)))
 ```
 
-This gives us a list of 52 bird species that seem to be particularly differentiated/variable across plots. That is precisely half of the total number of species in the overall dataset. 
+This gives us a list of 54 bird species that seem to be particularly differentiated/variable across plots. That is about half of the total number of species in the overall dataset. 
 
 As we proceed, we will begin layering on our environmental datasets using three main approaches: constrained ordination, linear models of species richness, and multi-species occupancy models.
 
@@ -442,22 +463,21 @@ OK - this is getting towards our main analytical goals! Let's sort by scores for
 fitconcrda_spp_order<-fitconcrda_spp[order(fitconcrda_spp$RDA1),]
 fitconcrda_spp_order$species<-factor(fitconcrda_spp_order$species,levels=fitconcrda_spp_order$species)
 
+color_resid_reorder<-color_resid[order(fitconcrda_spp$RDA1)]
 
-ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)
+ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)+theme(axis.text.y = element_text(colour = color_resid_reorder))
 
 ```
 
-This is a pretty neat plot - Acadian Flycatcher, Scarlet Tanager, Eastern Wood-Pewee, White-breasted Nuthatch, Hooded Warbler, Red-Eyed Vireo, Dark-Eyed Junco, Wood Thrush, Hairy Woodpeckers, and Lousiana Water-Thrush all appear to be associated with higher sedge, seedless vascular plant, and dicot cover and lower cover of tolerant plants. In contrast, Yellow Warblers, Orchard Orioles, Red-Winged Blackbirds, European Starlings, Warbling Vireos, Song Sparrows, Grey Catbirds, Tree Swallows, Mourning Doves, and Cedar Waxwings are all associated with more tolerant plants. 
+This is a pretty neat plot - Acadian Flycatcher, Scarlet Tanager, Eastern Wood-Pewee, White-breasted Nuthatch, Hooded Warbler, Red-Eyed Vireo, Dark-Eyed Junco, Wood Thrush, Hairy Woodpeckers, and Lousiana Water-Thrush all appear to be associated with higher sedge, seedless vascular plant, and dicot cover and lower cover of tolerant plants. In contrast, Yellow Warblers, Orchard Orioles, Red-Winged Blackbirds, European Starlings, Warbling Vireos, Song Sparrows, Grey Catbirds, Tree Swallows, Mourning Doves, and Cedar Waxwings are all associated with more tolerant plants. In addition, virtually all of our more tolerant vegetation-associated species are short-distance migrants, whereas the less tolerant vegetation-associated species are mostly neotropical migrants.
 
 ### constrained - sites
 
 While we have already explored environmental associations, we might also want to know what species are most differentiated between reservations. We will then use similar code to that used above to explore species that are most differentiated between reservations.
 
-```{r}
+```{r, warning = FALSE, message = FALSE}
 
 p_reservations<-rda(birdcomm_bin~reservatio,CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
-
-ordiplot(p_reservations,scaling=3)
 
 reservations_fitbirds<-envfit(p_reservations,birdcomm_bin)
 
@@ -518,6 +538,195 @@ ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
   geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))+xlim(-2,4)+ylim(-4,2)
 ```
 
+
+
+### Community associations
+
+Now, we can also look at how bird communities are differentiated between community types.
+
+```{r, warning = FALSE, message = FALSE }
+
+p_community<-rda(birdcomm_bin~community,CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
+
+community_fitbirds<-envfit(p_community,birdcomm_bin)
+
+community_fit<-envfit(p_community~community,data=CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
+
+
+CMP_bbs_pcap_join_pcaponly_pcapsum$site<-rownames(CMP_bbs_pcap_join_pcaponly_pcapsum)
+
+plot_df_community <- scores(p_community, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("site") %>% 
+  full_join(CMP_bbs_pcap_join_pcaponly_pcapsum, by = "site")
+
+plot_rda_community <- ggplot(plot_df_community, aes(x = RDA1, y = RDA2, color = community)) +
+  geom_point(size = 3, alpha = 0.8) +
+  stat_ellipse(linetype = 2, size = 1) +
+  labs(title = "RDA")
+plot_rda_community
+
+
+fitcommunity_pvals <- community_fitbirds$vectors$pvals %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  dplyr::rename("pvals" = ".")
+
+# extract coordinates for species, only keep species with p-val = 0.001
+fit_community_spp <- community_fitbirds %>% 
+  scores(., display = "vectors") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("species") %>% 
+  full_join(., fitcommunity_pvals, by = "species") %>% 
+  filter(pvals == 0.001)
+fit_community_spp
+
+fit_community <- community_fit %>% 
+  scores(., display = "factors") %>% 
+  as.data.frame() %>%
+  rownames_to_column("community")
+
+rda_communityn_plot_new <- ggplot(plot_df_community, aes(x = RDA1, y = RDA2)) +
+  coord_fixed() +
+  geom_point(aes(color = community), size = 3, alpha = 0.8) +
+  geom_segment(data = fit_community_spp, aes(x = 0, xend = RDA1, y = 0, yend = RDA2),
+               col = "black") +
+  geom_text(data = fit_community_spp, aes(label = species))+
+  geom_text(data=as.data.frame(fit_community),aes(label=community))
+rda_communityn_plot_new
+
+ggplot(plot_df_community, aes(x = RDA1, y = RDA2)) +
+  coord_fixed() +
+  geom_text(data=as.data.frame(fit_community),aes(label=community))+xlim(-2,4)+ylim(-1,5)
+
+ggplot(plot_df_community, aes(x = RDA1, y = RDA2)) +
+  coord_fixed() +
+  geom_text(data=as.data.frame(fit_community_spp),aes(label=species))+xlim(-1,1)+ylim(-1,1)
+
+```
+
+
+For these ordinations, RDA1 seems to differentiate birds along an approximate gradient of forest cover - with negative loadings indicating more hardwood-associated bird communities and more positive loadings indicating more mesic/meadow-associated areas. Intriguingly, RDA2 then groups Mesic Meadows out from all other community types - with more positive values indicating more Mesic Meadow-associated birds. 
+
+
+Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Hooded Warbler, Indigo Bunting, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler = **16 species**
+
+Resident: Carolina Wren, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
+
+Short-distance migrant: Brown Thrasher, Cedar Waxwing, Common Grackle, Gray Catbird, House Wren, Killdeer, Mourning Dove, Northern Rough-winged Swallow, Purple Finch, Red-winged Blackbird, Tree Swallow = **11 species**
+
+Resident or migratory: Dark-eyed Junco = **1 species**
+
+
+We also can explore linear discriminant analysis:
+
+```{r,eval=FALSE}
+
+community<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$community)
+ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15))
+
+```
+
+![lda](./lda_birdcomm.png)
+
+
+
+### co-occurrence networks
+
+We can also see which bird species co-occur together.
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+CMP_bbs_pcap_join_pcaponly_commsumm<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(community,species_4_) %>%
+  summarise(n=n()) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0) 
+CMP_bbs_pcap_join_pcaponly_commsumm<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_commsumm,var = "community")
+
+CMP_bbs_pcap_join_pcaponly_commsumm<-CMP_bbs_pcap_join_pcaponly_commsumm[,-1]
+
+CMP_bbs_pcap_join_pcaponly_commsumm_presabs<-CMP_bbs_pcap_join_pcaponly_commsumm %>% mutate_if(is.numeric, ~1 * (. >= 1))
+
+CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t<-t(CMP_bbs_pcap_join_pcaponly_commsumm_presabs)
+
+birdcomm_bin_t<-t(birdcomm_bin)
+
+
+BBSMigrants<-read.csv("G:/NaturalResources/Byer/datasets/BBS/BBS Migants.csv",header=T)
+
+BBSMigrants_sub<-BBSMigrants[BBSMigrants$SpeciesCode %in% colnames(birdcomm_bin),]
+
+Residency<-BBSMigrants_sub$Residency
+
+color_resid<-Residency
+
+color_resid[color_resid %in% "NE"]<-"blue"
+
+color_resid[color_resid %in% "M"]<-"green"
+
+color_resid[color_resid %in% "R"]<-"red"
+
+
+# presence/absence across plots
+co <- print(cooccur(birdcomm_bin_t, spp_names = TRUE))
+
+co[, "sp1_name"] == rownames(birdcomm_bin_t)[co$sp1]
+co[, "sp2_name"] == rownames(birdcomm_bin_t)[co$sp2]
+
+
+
+nodes <- data.frame(id = 1:nrow(birdcomm_bin_t),
+                    label = rownames(birdcomm_bin_t),
+                    color = color_resid,
+                    shadow = TRUE) 
+edges <- data.frame(from = co$sp1, to = co$sp2,
+                    color = ifelse(co$p_lt <= 0.05, "#B0B2C1", "#3C3F51"),
+                    dashes = ifelse(co$p_lt <= 0.05, TRUE, FALSE))
+
+cooc<-cooccur(birdcomm_bin_t, spp_names = TRUE)
+
+```
+
+```{r, echo = FALSE }
+visNetwork(nodes = nodes, edges = edges) %>%
+    visIgraphLayout(layout = "layout_with_kk")
+
+```
+
+![coccur](./coccurrence_birds_zoom.png)
+
+
+
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+
+# presence/absence across habitats
+
+co_comm <- print(cooccur(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t, spp_names = TRUE))
+
+co_comm[, "sp1_name"] == rownames(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t)[co_comm$sp1]
+co_comm[, "sp2_name"] == rownames(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t)[co_comm$sp2]
+
+
+nodes_comm <- data.frame(id = 1:nrow(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t),
+                    label = rownames(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t),
+                    color = color_resid,
+                    shadow = TRUE) 
+edges_comm <- data.frame(from = co_comm$sp1, to = co_comm$sp2,
+                    color = ifelse(co_comm$p_lt <= 0.05, "#B0B2C1", "#3C3F51"),
+                    dashes = ifelse(co_comm$p_lt <= 0.05, TRUE, FALSE))
+
+coocc_comm<-cooccur(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t, spp_names = TRUE)
+
+```
+
+```{r}
+visNetwork(nodes = nodes_comm, edges = edges_comm) %>%
+    visIgraphLayout(layout = "layout_with_kk")
+plot(coocc_comm)
+```
+
+
 ### Now pRDA - with variance partitioning.
 
 As a final sanity check, it can sometimes be difficult to disentangle geographic effects from environmental effects in these sorts of analyses. For example, what if (hypothetically) cover of seedless vascular plants is negatively associated with geographic coordinates? Thus, we might want to briefly check if the variance explained by our environmental axes is (or is not) confounded with geography. To do so, we will use the varpart() function, which partitions variance between model components:
@@ -531,6 +740,7 @@ plot(pcap_geog)
 ```
 
 So - most of this variation is associated with these top covariates (X1), and NOT with latitude and longitude alone (X2). Good to see - this means we can be confident that these are actual environmental effects!
+
 
 ## community richness metrics
 
