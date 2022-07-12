@@ -656,7 +656,9 @@ BBSMigrants<-read.csv("G:/NaturalResources/Byer/datasets/BBS/BBS Migants.csv",he
 
 BBSMigrants_sub<-BBSMigrants[BBSMigrants$SpeciesCode %in% colnames(birdcomm_bin),]
 
-Residency<-BBSMigrants_sub$Residency
+BBSMigrants_sub_reorder<-BBSMigrants_sub[match(rownames(birdcomm_bin_t), BBSMigrants_sub$SpeciesCode),]
+
+Residency<-BBSMigrants_sub_reorder$Residency
 
 color_resid<-Residency
 
@@ -1226,7 +1228,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<- CMP_bbs_pcap_join_pcaponly
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1252,7 +1254,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck<- CMP_bbs_pcap_join_pcaponl
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1279,7 +1281,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck<- CMP_bbs_pcap_join_pcaponly
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1305,7 +1307,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck<- CMP_bbs_pcap_join_pcaponl
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1331,7 +1333,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck<- CMP_bbs_pcap_join_pcaponly
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1357,7 +1359,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck<- CMP_bbs_pcap_join_pcaponly
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1384,7 +1386,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck<- CMP_bbs_pcap_join_pcapon
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1411,7 +1413,7 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck<- CMP_bbs_pcap_join_pcaponl
                   HOSP, HOWA, HOWR, INBU, KILL, LOWA, MALL, MODO, NOCA, NOFL, 
                   NOPA, NRWS, OROR, OVEN, PIWO, PUFI, PUMA, RBGR, RBGU, RBNU, 
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
-                  SOSP, SWSP, TEWA, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
+                  SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
                   datecount))
 
@@ -1424,18 +1426,18 @@ eighthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck %>%
 
 bbs_occobject<-list()
 
-bbs_occobject$y<-array(dim=c(104,164,3))
+bbs_occobject$y<-array(dim=c(103,164,3))
 
 bbs_occobject$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_birds),
-                           as.matrix(thirdcheck_birds)), dim=c(104,164,3))
+                           as.matrix(thirdcheck_birds)), dim=c(103,164,3))
 
 bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:4])
 
 bbs_occobject$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:4])
 
-bbs_occobject$occ.covs<-as.matrix(vegecomm[,-(1:2)])
+bbs_occobject$occ.covs<-as.matrix(vegecomm[,-(1:3)])
 
-bbs_occobject$coords<-as.matrix(vegecomm[,1:2])
+bbs_occobject$coords<-as.matrix(vegecomm[,2:3])
 
 
 ```
@@ -1946,7 +1948,7 @@ AICc_table$model<-c("Null","p ~ day", "p ~ day + time-of-day", "p ~ day^2 + day 
 
 AICc_table$wAIC<-c(waicOcc(out.ms.null)[[3]],waicOcc(out.ms.detect.day)[[3]],waicOcc(out.ms.detect.daytod)[[3]],
                    waicOcc(out.ms.detect.daytodquad)[[3]],waicOcc(out.ms.vibifq)[[3]],waicOcc(out.ms.vibifqnotrees)[[3]],
-                   waicOcc(out.ms.fullrda)[[3]],waicOcc(out.ms.tolerance)[[3]],waicOcc(out.ms.global)[[3]],waicOcc(out.ms.fqi))
+                   waicOcc(out.ms.fullrda)[[3]],waicOcc(out.ms.tolerance)[[3]],waicOcc(out.ms.global)[[3]],waicOcc(out.ms.fqi)[[3]])
 
 ```
 
@@ -1974,7 +1976,7 @@ sppnames<-c("ACFL","ALFL","AMCR","AMGO","AMKE","AMRE","AMRO","AMWO","BADO","BAEA
 "EAPH","EATO","EAWP","EUST","FISP","GBHE","GCFL","GHOW","GRCA","GRHE","HAWO","HERG","HETH","HOFI",
 "HOSP","HOWA","HOWR","INBU","KILL","LOWA","MALL","MODO","NOCA","NOFL","NOPA",
 "NRWS","OROR","OVEN","PIWO","PUFI","PUMA","RBGR","RBGU","RBNU","RBWO","REVI",
-"RHWO","ROPI","RSHA","RTHA","RTHU","RWBL","SAVS","SCTA","SOSP","SWSP","TEWA",
+"RHWO","ROPI","RSHA","RTHA","RTHU","RWBL","SAVS","SCTA","SOSP","SWSP",
 "TRES","TUTI","TUVU","VEER","VIRA","WAVI","WBNU",
 "WEVI","WIFL","WITU","WIWR","WODU","WOTH","YBCU","YEWA","YTVI","YTWA")
 
@@ -2027,13 +2029,13 @@ for(i in 1:length(sppnames)){
   r2 <- crop(maxint, extent(sp_poly_df))
   r3 <- mask(r2, sp_poly_df)
   idwrasters[[i]]<-r3
-  writeRaster(maxint,filename = paste0(sppnames[i],"_occmeanpsi_globalmod_idw_origbbslocs.asc"),overwrite=TRUE)
+  writeRaster(maxint,filename = paste0("U:/DataAnalysis/BreedingBirds",sppnames[i],"_occmeanpsi_globalmod_idw_origbbslocs_rev.asc"),overwrite=TRUE)
   
 }
 
-saveRDS(idwrasters,"idwrasters_global.Rdata")
+saveRDS(idwrasters,"U:/DataAnalysis/BreedingBirds/idwrasters_global.Rdata")
 
-saveRDS(sppnames,"sppnames.Rdata")
+saveRDS(sppnames,"U:/DataAnalysis/BreedingBirds/sppnames.Rdata")
 
 ```
 
