@@ -17,6 +17,7 @@ knit: (function(input_file, encoding) {
 runtime: shiny
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,out.width = "100%")
 
@@ -87,6 +88,9 @@ CMP_bbs_pcap_join_pcaponly<-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),
 datetime<-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format="%m/%d/%Y %H:%M")
 hist(datetime,breaks="months")
 
+pcap_1styear_landscape<-read.csv("G:/NaturalResources/Byer/datasets/BBS/pcap_4yr_landscape_variables_202204281228.csv",header=T)
+
+
 ```
 
 Next, we need to start grouping this dataset for downsteram analysis. This involves summarizing counts of each species for each plot. We also replace any NA values in the data frame with zeroes - this will be important for downstream applications, as we want to distinguish between unobserved species at a plot and check (typically coded 0s) and checks that were "skipped" (NAs).
@@ -111,7 +115,16 @@ CMP_bbs_pcap_join_pcaponly_pcapsum<-CMP_bbs_pcap_join_pcaponly %>%
   spread(species_4_,n) %>%
   replace(is.na(.),0)
 
-CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_pcapsum,var="simp_plot")
+names(pcap_1styear_landscape)[names(pcap_1styear_landscape) == 'site.name'] <- 'simp_plot'
+
+
+CMP_bbs_pcap_join_pcaponly_pcapsum_landscape<-left_join(x = CMP_bbs_pcap_join_pcaponly_pcapsum,y = pcap_1styear_landscape,by="simp_plot")
+
+CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_pcapsum_landscape,var="simp_plot")
+
+
+
+
 
 ```
 
@@ -121,7 +134,7 @@ Let's do a bit more processing on this dataset to get it in shape for downstream
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 
-birdcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,28:(ncol(CMP_bbs_pcap_join_pcaponly_pcapsum))]
+birdcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,28:(130)]
 
 birdcomm[is.na(birdcomm)] <- 0
 
@@ -131,6 +144,15 @@ Next, we separate out our PCAP data.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,5:26]
+
+```
+
+Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (~5 years is likely not enough for substantial land cover change).
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+landcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,142:153]
+
+landcomm[is.na(landcomm)] <- 0
 
 ```
 
@@ -146,10 +168,40 @@ corvar<-findCorrelation(vegecomm_cor,cutoff=0.6)
 vegecomm_drop<-vegecomm[,-corvar]
 ```
 
+We can also check for correlations between the landscape covariates.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+landcomm_cor<-cor(landcomm)
+
+set.seed(12345)
+corvar_land<-findCorrelation(landcomm_cor,cutoff=0.6)
+
+landcomm_drop<-landcomm[,-corvar_land]
+
+
+```
+
+We can then check correlations between PCAP and landscape covariates.
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+
+landvegcomm_drop<-cbind(vegecomm_drop,landcomm_drop)
+
+landvegcomm_drop_cor<-cor(landvegcomm_drop)
+
+set.seed(12345)
+corvar_landveg<-findCorrelation(landvegcomm_drop_cor,cutoff=0.6)
+
+```
+
+No covariates were overly correlated in this dataset, so we can proceed.
+
 Now, we have:
 
 a) a vegecomm dataset - which representing PCAP measurements for each of the 164 BBS/PCAP plots.
 b) a birdcomm dataset - representing presence/absence of each bird species for each survey in each plot.
+c) a landcomm dataset - representing landscape covariates associated with these PCAP plots.
 
 Note that we are not explicitly considering differences in bird counts (or occupancy, or detectability) through time at this point - we will get to that later. For now, we just want to explore broad associations between these two datasets! 
 
@@ -187,6 +239,8 @@ color_resid[color_resid %in% "NE"]<-"blue"
 color_resid[color_resid %in% "M"]<-"green"
 
 color_resid[color_resid %in% "R"]<-"red"
+
+BBSMigrants_sub$color_resid<-color_resid
 
 
 ```
@@ -227,7 +281,7 @@ bird_pcoa<-capscale(birdcomm_bin~1,distance="bray")
 
 plot(bird_pcoa,type="n",main="PCoA") 
 
-text(bird_pcoa,display="species",col=color_resid,cex=0.6) 
+text(bird_pcoa,display="species",col=BBSMigrants_sub$color_resid,cex=0.6) 
 
 points(bird_pcoa,display="sites",pch=16) #adds filled circles for sites
 
@@ -243,7 +297,7 @@ bird_nmds<-metaMDS(birdcomm_bin,distance = "bray",trymax = 400,k=3,trace=FALSE)
 
 plot(bird_nmds,type="n",main="NMDS") 
 
-text(bird_nmds,display="species",col=color_resid,cex=0.6) 
+text(bird_nmds,display="species",col=BBSMigrants_sub$color_resid,cex=0.6) 
 
 points(bird_nmds,display="sites",pch=16) #adds filled circles for sites
 
@@ -404,7 +458,6 @@ We are going to use stepwise selection to explore which PCAP covariates most exp
 
 ```{r}
 
-
 p<-rda(birdcomm_bin~.,vegecomm_drop,scale=T)
 fit<-envfit(p,vegecomm_drop,scale=T)
 
@@ -422,7 +475,9 @@ anova(p_step,by="axis")
 ordiplot(p_step,scaling=3)
 ```
 
-So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species. As a quick caveat, these four variables only explain about 7.3% of the variation, as seen here (red is our environmental axes, black is our unconstrained axes):
+So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species. 
+
+As a quick caveat, these four variables only explain about 7.3% of the variation, as seen here (red is our environmental axes, black is our unconstrained axes):
 
 ```{r}
 constrained_eig <- p_step$CCA$eig/p_step$tot.chi*100
@@ -434,11 +489,74 @@ barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('bl
 
 This is not that terribly uncommon for redundancy analyses - It is often difficult to find environmental gradients that explain all of the variance in large datasets like ours. Biologically, we likely do not necessarily expect that a single environmental gradient alone drives all of the variation in bird presence/absence, and intuitively know that we also have to worry about observer effects, weather, and other unmeasured characteristics. Regardless of any of the above, the ordination is significant - as are the relationships with these covariates, so we can safely say that nearly 10% of the variation in our bird species dataset is explainable by these 4 PCAP covariates!
 
-We can also explore bird species most significantly associated with our constrained ordination axes, too. 
+
+We can also explore just the landscape covariate associations:
+
+
+```{r}
+
+p_land<-rda(birdcomm_bin~.,landcomm_drop,scale=T)
+fit<-envfit(p_land,landcomm_drop,scale=T)
+
+
+p_land_0<-rda(birdcomm_bin~1,landcomm_drop,scale=T)
+p_land_1<-rda(birdcomm_bin~.,landcomm_drop,scale=T)
+
+set.seed(12345)
+p_land_step<- ordistep(p_land_0, scope = formula(p_land_1))
+p_land_step
+
+anova(p_land_step)
+anova(p_land_step,by="term")
+anova(p_land_step,by="axis")
+ordiplot(p_land_step,scaling=3)
+
+constrained_eig <- p_land_step$CCA$eig/p_land_step$tot.chi*100
+unconstrained_eig <- p_land_step$CA$eig/p_land_step$tot.chi*100
+expl_var <- c(constrained_eig, unconstrained_eig)
+barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('black', length (unconstrained_eig))),
+         las = 2, ylab = '% variation')
+
+```
+
+And now for the vegetation and land cover dataset:
+
+```{r}
+
+p_landveg<-rda(birdcomm_bin~.,landvegcomm_drop,scale=T)
+fit_landveg<-envfit(p_landveg,landvegcomm_drop,scale=T)
+
+
+p_landveg_0<-rda(birdcomm_bin~1,landvegcomm_drop,scale=T)
+p_landveg_1<-rda(birdcomm_bin~.,landvegcomm_drop,scale=T)
+
+set.seed(12345)
+p_landveg_step<- ordistep(p_landveg_0, scope = formula(p_landveg_1))
+p_landveg_step
+
+
+anova(p_landveg_step)
+anova(p_landveg_step,by="term")
+anova(p_landveg_step,by="axis")
+ordiplot(p_landveg_step,scaling=3)
+
+
+constrained_eig <- p_landveg_step$CCA$eig/p_landveg_step$tot.chi*100
+unconstrained_eig <- p_landveg_step$CA$eig/p_landveg_step$tot.chi*100
+expl_var <- c(constrained_eig, unconstrained_eig)
+barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('black', length (unconstrained_eig))),
+         las = 2, ylab = '% variation')
+
+```
+
+Some interesting things are going on here. RDA1 primarily captures both plot-scale and landscape-scale indicators of disturbance - namely, relative cover of tolerant plant species (plot level) and landscape disturbance index (at a landscape-level) contrasted with indicators of less disturbance - namely, further distances to developed land, more seedless vascular plants, more cyperaceae, and more dicots. This one axis explains upwards of 5% of variation - so we are doing pretty well in that regard. Across all seven axes, we are approaching about 11% explained variance. In addition, stepwise selection basically confirms variable selection for the land cover and vegetation datasets run separately - the same variables included in those best-supported model statements are in this full model.
+
+
+We can also explore bird species most significantly associated with our constrained ordination axes, too. We will focus on the full (land cover and vegetation) ordination.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 # envfit() takes the output of metaMDS() and the species matrix you created
-fitconcrda <- envfit(p_step, birdcomm_bin, perm = 999) 
+fitconcrda <- envfit(p_landveg_step, birdcomm_bin, perm = 999) 
 
 # extract p-values for each species
 fitconcrda_pvals <- fitconcrda$vectors$pvals %>% 
@@ -460,16 +578,38 @@ fitconcrda_spp <- fitconcrda %>%
 OK - this is getting towards our main analytical goals! Let's sort by scores for that first environmental axis and plot these in order:
 
 ```{r,fig.height=12}
-fitconcrda_spp_order<-fitconcrda_spp[order(fitconcrda_spp$RDA1),]
+
+
+BBSMigrants_sub_sig<-BBSMigrants_sub[BBSMigrants_sub$SpeciesCode %in% fitconcrda_spp$species,]
+
+BBSMigrants_sub_sig_reorder<-BBSMigrants_sub_sig[order(BBSMigrants_sub_sig$SpeciesCode),]
+
+fitconcrda_spp_reorder<-fitconcrda_spp[order(fitconcrda_spp$species),]
+
+fitconcrda_spp_join<-cbind(fitconcrda_spp_reorder,BBSMigrants_sub_sig_reorder)
+
+
+fitconcrda_spp_order<-fitconcrda_spp_join[order(fitconcrda_spp_join$RDA1),]
 fitconcrda_spp_order$species<-factor(fitconcrda_spp_order$species,levels=fitconcrda_spp_order$species)
 
-color_resid_reorder<-color_resid[order(fitconcrda_spp$RDA1)]
+fitconcrda_spp_order$color_resid[fitconcrda_spp_order$Residency %in% "NE"]<-"blue"
 
-ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)+theme(axis.text.y = element_text(colour = color_resid_reorder))
+fitconcrda_spp_order$color_resid[fitconcrda_spp_order$Residency %in% "M"]<-"green"
+
+fitconcrda_spp_order$color_resid[fitconcrda_spp_order$Residency %in% "R"]<-"red"
+
+
+
+color_sub<-fitconcrda_spp_order$color_resid
+
+ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)+theme(axis.text.y = element_text(colour = color_sub))
 
 ```
 
 This is a pretty neat plot - Acadian Flycatcher, Scarlet Tanager, Eastern Wood-Pewee, White-breasted Nuthatch, Hooded Warbler, Red-Eyed Vireo, Dark-Eyed Junco, Wood Thrush, Hairy Woodpeckers, and Lousiana Water-Thrush all appear to be associated with higher sedge, seedless vascular plant, and dicot cover and lower cover of tolerant plants. In contrast, Yellow Warblers, Orchard Orioles, Red-Winged Blackbirds, European Starlings, Warbling Vireos, Song Sparrows, Grey Catbirds, Tree Swallows, Mourning Doves, and Cedar Waxwings are all associated with more tolerant plants. In addition, virtually all of our more tolerant vegetation-associated species are short-distance migrants, whereas the less tolerant vegetation-associated species are mostly neotropical migrants.
+
+
+
 
 ### constrained - sites
 
