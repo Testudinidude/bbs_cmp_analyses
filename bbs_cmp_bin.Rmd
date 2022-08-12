@@ -970,10 +970,6 @@ vegecomm_reserv_richness<-cbind(vegecomm_reserv,reservspcount)
 
 ggplot(aes(x=vibifq,y=reservspcount),data=vegecomm_reserv_richness)+geom_point()+geom_smooth(method="lm")
 
-
-reservation_spaccum<-specaccum(birdcomm_reserv_bin,w = vegecomm_reserv$numsurveys, method="random")
-plot(reservation_spaccum)
-
 ```
 
 This doesn't quite get at what we want - this displays species accumulation across reservations after accounting for survey effort per reservation. Let's try exploring reservation-by-reservation rarefaction with the previous observation-level dataset.
@@ -2156,3 +2152,7 @@ covars_canopy$spporder<-spp_canopyorder
 
 ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0702)+theme_classic(base_size=12)
 ```
+
+
+
+
