@@ -686,6 +686,8 @@ Now, we can also look at how bird communities are differentiated between communi
 
 ```{r, warning = FALSE, message = FALSE }
 
+community<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$community.x)
+
 p_community<-rda(birdcomm_bin~community,CMP_bbs_pcap_join_pcaponly_pcapsum,scale=T)
 
 community_fitbirds<-envfit(p_community,birdcomm_bin)
