@@ -877,7 +877,7 @@ As a final sanity check, it can sometimes be difficult to disentangle geographic
 
 ```{r}
 
-vegecomm_latlong<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
+vegecomm_latlong<-CMP_bbs_pcap_join_pcaponly_pcapsum[,3:26]
 
 pcap_geog<-varpart(birdcomm_bin,~ tol_rel + svp + dicot + cyper,~longitude+latitude,data=vegecomm_latlong)
 plot(pcap_geog)
