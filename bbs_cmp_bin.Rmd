@@ -1,7 +1,7 @@
 ---
 title: "Breeding Bird Surveys - Cleveland Metroparks"
 author: "Nathan W. Byer"
-date: "7/12/2022"
+date: "8/18/2022"
 output: 
   html_document:
     toc: true
@@ -82,7 +82,7 @@ Tim Krynak, Erik Shaffer, Jen Brumfield, and other Cleveland Metroparks and affi
 First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time. 
 
 ```{r}
-CMP_bbs_pcap_join<-read.csv("G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin_elimWC.csv",header=T)
+CMP_bbs_pcap_join<-read.csv("G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin_elimWC_EATO.csv",header=T)
 CMP_bbs_pcap_join_pcaponly<-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),]
 
 datetime<-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format="%m/%d/%Y %H:%M")
@@ -128,7 +128,7 @@ CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponl
 
 ```
 
-This is a pretty unwieldly dataset at present - we have 164 rows (representing our BBS/PCAP plots) and 131 columns. Out of those 131 columns, 104 are unique species (designated with four-letter codes), so most of the first 27 covariates are essentially our "predictors" - in this case, our PCAP data.
+This is a pretty unwieldly dataset at present - we have 164 rows (representing our BBS/PCAP plots) and 131 columns. Out of those 131 columns, 103 are unique species (designated with four-letter codes), so most of the first 27 covariates are essentially our "predictors" - in this case, our PCAP data.
 
 Let's do a bit more processing on this dataset to get it in shape for downstream analyses. First, we will separate out our bird community data.
 
@@ -352,6 +352,14 @@ Anyway! on to the PCOA:
 # envfit() takes the output of metaMDS() and the species matrix you created
 fitpcoa <- envfit(bird_pcoa, birdcomm_bin, perm = 999) 
 
+CMP_bbs_pcap_join_pcaponly_pcapsum$site<-rownames(CMP_bbs_pcap_join_pcaponly_pcapsum)
+
+plot_df_pcoa <- scores(bird_pcoa, display = "sites") %>% 
+  as.data.frame() %>% 
+  rownames_to_column("site") %>% 
+  full_join(CMP_bbs_pcap_join_pcaponly_pcapsum, by = "site")
+
+
 # extract p-values for each species
 fitpcoa_pvals <- fitpcoa$vectors$pvals %>% 
   as.data.frame() %>% 
@@ -367,6 +375,41 @@ fit_pcoa_spp <- fitpcoa %>%
   filter(pvals == 0.001)
 
 fit_pcoa_spp
+
+
+BBSMigrants_sub_pcoasig<-BBSMigrants_sub[BBSMigrants_sub$SpeciesCode %in% fit_pcoa_spp$species,]
+
+BBSMigrants_sub_pcoasig_reorder<-BBSMigrants_sub_pcoasig[order(BBSMigrants_sub_pcoasig$SpeciesCode),]
+
+fit_pcoa_spp_reorder<-fit_pcoa_spp[order(fit_pcoa_spp$species),]
+
+fit_pcoa_spp_join<-cbind(fit_pcoa_spp_reorder,BBSMigrants_sub_pcoasig_reorder)
+
+
+fit_pcoa_spp_order<-fit_pcoa_spp_join[order(fit_pcoa_spp_join$MDS1),]
+fit_pcoa_spp_order$species<-factor(fit_pcoa_spp_order$species,levels=fit_pcoa_spp_order$species)
+
+fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "NE"]<-"blue"
+
+fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "M"]<-"green"
+
+fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "R"]<-"red"
+
+col_pcoa<-fit_pcoa_spp_order$color_resid
+
+color_sub<-fit_pcoa_spp_order$color_resid
+pcoa_plot_new <- ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
+  coord_fixed() +
+  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
+  stat_ellipse(aes(color = reservatio)) +
+  geom_segment(data = fit_pcoa_spp_order, aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa) +
+  geom_text(data = fit_pcoa_spp_order, aes(label = SpeciesCode),colour=col_pcoa) 
+pcoa_plot_new
+
+
+ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
+    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa[fit_pcoa_spp_order$Residency == "NE"]) +
+    geom_text(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(label = SpeciesCode),colour=col_pcoa[fit_pcoa_spp_order$Residency == "NE"])+theme_classic(base_size=16)
 
 ```
 
@@ -765,7 +808,10 @@ We also can explore linear discriminant analysis:
 ```{r,eval=FALSE}
 
 community<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$community)
-ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15))
+ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),txt=NULL,arrow=NULL)
+ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),txt=NULL,arrow=NULL,alpha=0,alpha_el=0.5)
+ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),alpha=0,alpha_el=0.5)
+
 
 ```
 
@@ -1211,6 +1257,9 @@ richmods_reserv<-list(Rich_reserv_ap,Rich_reserv_bryo,Rich_reserv_canopy,Rich_re
 
 aictab(richmods_reserv)
 
+ggplot(aes(x=vibifqnotrees,y=interrich_n3,label=reservatio),data=vegecomm_reserv_richness)+geom_point()+geom_smooth(method="lm")+theme_classic(base_size=24)+xlab("VIBI-FQ (excluding trees)")+ylab("Reservation-level species richness")+
+geom_text(hjust=1, vjust=-0.5)
+
 ```
 
 although our power is a bit limited above, it does appear that the Vegetative Index of Biotic Integrity - at a reservation-level - does appear to predict bird species richness (as long as we do not include woody plants in that list!)
@@ -1218,10 +1267,9 @@ although our power is a bit limited above, it does appear that the Vegetative In
 we can also plot out richness for each site:
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
-ggplot(aes(x=reservatio,y=reservspcount),data=vegecomm_reserv_richness)+geom_col()
+ggplot(aes(x=reservatio,y=reservspcount),data=vegecomm_reserv_richness)+geom_col()+theme_classic(base_size=24)+xlab("Reservation")+ylab("Species richness")
 
-ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col()
-
+ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col()+theme_classic(base_size=24)+xlab("Reservation")+ylab("Rarefied species richness")
 ```
 
 In confirmation of our prior ordination plots, it now appears that Rocky River is one of the most species rich areas - followed by Hinckley, South Chagrin, Bedford, and Brecksville. 
