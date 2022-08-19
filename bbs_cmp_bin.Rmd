@@ -391,7 +391,7 @@ fit_pcoa_spp_order$species<-factor(fit_pcoa_spp_order$species,levels=fit_pcoa_sp
 
 fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "NE"]<-"blue"
 
-fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "M"]<-"green"
+fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "M"]<-"green3"
 
 fit_pcoa_spp_order$color_resid[fit_pcoa_spp_order$Residency %in% "R"]<-"red"
 
@@ -399,17 +399,26 @@ col_pcoa<-fit_pcoa_spp_order$color_resid
 
 color_sub<-fit_pcoa_spp_order$color_resid
 pcoa_plot_new <- ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
-  coord_fixed() +
-  geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
-  stat_ellipse(aes(color = reservatio)) +
-  geom_segment(data = fit_pcoa_spp_order, aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa) +
-  geom_text(data = fit_pcoa_spp_order, aes(label = SpeciesCode),colour=col_pcoa) 
+  labs(color="Reservation")+
+  coord_fixed(xlim=c(-2,2),ylim=c(-2,2)) + theme_classic(base_size=24)+
+  geom_point(aes(color = reservatio), size = 3, alpha = 0.8)+
+  stat_ellipse(aes(color = reservatio),size=1.5) +
+  geom_segment(data = fit_pcoa_spp_order, aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa,size=1.25) +
+  geom_text(data = fit_pcoa_spp_order, aes(label = SpeciesCode),colour=col_pcoa)
 pcoa_plot_new
 
 
 ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
-    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa[fit_pcoa_spp_order$Residency == "NE"]) +
-    geom_text(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(label = SpeciesCode),colour=col_pcoa[fit_pcoa_spp_order$Residency == "NE"])+theme_classic(base_size=16)
+    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order, aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa) +geom_text(data = fit_pcoa_spp_order, aes(label = SpeciesCode),colour=col_pcoa)+theme_classic(base_size=24)
+
+ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
+    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa[fit_pcoa_spp_order$Residency == "NE"]) +geom_text(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "NE",], aes(label = SpeciesCode),colour=col_pcoa[fit_pcoa_spp_order$Residency == "NE"])+theme_classic(base_size=24)
+
+ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
+    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "R",], aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa[fit_pcoa_spp_order$Residency == "R"]) +geom_text(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "R",], aes(label = SpeciesCode),colour=col_pcoa[fit_pcoa_spp_order$Residency == "R"])+theme_classic(base_size=24)
+
+ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
+    coord_fixed(xlim = c(-0.8,0.8),ylim=c(-0.6,0.4)) +geom_segment(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "M",], aes(x = 0, xend = MDS1, y = 0, yend = MDS2), col = col_pcoa[fit_pcoa_spp_order$Residency == "M"]) +geom_text(data = fit_pcoa_spp_order[fit_pcoa_spp_order$Residency == "M",], aes(label = SpeciesCode),colour=col_pcoa[fit_pcoa_spp_order$Residency == "M"])+theme_classic(base_size=24)
 
 ```
 
@@ -515,7 +524,16 @@ p_step
 anova(p_step)
 anova(p_step,by="term")
 anova(p_step,by="axis")
-ordiplot(p_step,scaling=3)
+
+pcapplot<-ordiplot(p_step,scaling=3,type="n")
+points(pcapplot, "sites",pch=3, col=colpal_reserv[reserv])
+
+ordihull(pcapplot,groups = reserv, col=colpal_reserv, lwd=3)
+title("PCA (vegan rda version)")
+legend(x="right", legend=levels(reserv), col=colpal_reserv,pch = 3,cex=0.5)
+
+ggord(p_step,  xlim=c(-1.25,1),ylim = c(-0.5, 1),txt=4,arrow=TRUE,ptslab=TRUE,addsize=3, size =4,addcol = color_resid)
+
 ```
 
 So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species. 
@@ -599,7 +617,7 @@ We can also explore bird species most significantly associated with our constrai
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 # envfit() takes the output of metaMDS() and the species matrix you created
-fitconcrda <- envfit(p_landveg_step, birdcomm_bin, perm = 999) 
+fitconcrda <- envfit(p_step, birdcomm_bin, perm = 999) 
 
 # extract p-values for each species
 fitconcrda_pvals <- fitconcrda$vectors$pvals %>% 
@@ -645,7 +663,7 @@ fitconcrda_spp_order$color_resid[fitconcrda_spp_order$Residency %in% "R"]<-"red"
 
 color_sub<-fitconcrda_spp_order$color_resid
 
-ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=12)+theme(axis.text.y = element_text(colour = color_sub))
+ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_classic(base_size=18)+theme(axis.text.y = element_text(colour = color_sub))
 
 ```
 
@@ -700,11 +718,9 @@ fit_reservations <- reservations_fit %>%
   as.data.frame() %>%
   rownames_to_column("reservations")
 
-rda_reservation_plot_new <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
-  coord_fixed() +
+rda_reservation_plot_new <- ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +coord_fixed() +
   geom_point(aes(color = reservatio), size = 3, alpha = 0.8) +
-  geom_segment(data = fit_reservations_spp, aes(x = 0, xend = RDA1, y = 0, yend = RDA2),
-               col = "black") +
+  geom_segment(data = fit_reservations_spp, aes(x = 0, xend = RDA1, y = 0, yend = RDA2),col = "black") +
   geom_text(data = fit_reservations_spp, aes(label = species))+
   geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))
 rda_reservation_plot_new
@@ -721,6 +737,49 @@ ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
   geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))+xlim(-2,4)+ylim(-4,2)
 ```
 
+
+#### lda of reservations
+
+```{r, warning = FALSE, message = FALSE,eval=FALSE}
+reservation<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$reservatio)
+reservation_min3<-reservation[!(reservation %in% c("BK","EC","GP","HU","WA"))]
+
+birdcomm_bin_min3<-birdcomm_bin[!(CMP_bbs_pcap_join_pcaponly_pcapsum$reservatio %in% c("BK","EC","GP","HU","WA")),]
+
+birdcomm_bin_min3_drop1<-birdcomm_bin_min3[colSums(birdcomm_bin_min3) > 1]
+
+
+
+color_resid_dropconstant<-color_resid[(colnames(birdcomm_bin) %in% colnames(birdcomm_bin_min3_drop1))]
+
+
+lda_birdreserv<-lda(birdcomm_bin_min3_drop1, grouping = reservation_min3)
+ggord(lda_birdreserv, reservation_min3, xlim=c(-15,15),ylim = c(-20, 20),txt=NULL,arrow=NULL)
+ggord(lda_birdreserv, reservation_min3, xlim=c(-25,25),ylim = c(-20, 20),txt=NULL,arrow=NULL,alpha=0,alpha_el=0.5)
+ggord(lda_birdreserv, reservation_min3, xlim=c(-25,25),ylim = c(-20, 20),alpha=0,alpha_el=0.5,veccol=color_resid_dropconstant,labcol=color_resid_dropconstant)
+
+ggord(lda_birdreserv, reservation_min3, xlim=c(-25,25),ylim = c(-20, 20),veccol=color_resid_dropconstant,labcol=color_resid_dropconstant)
+
+
+ggord(lda_birdreserv, reservation_min3, xlim=c(-10,10),ylim = c(-10, 10),alpha=0,alpha_el=0.5,veccol=color_resid_dropconstant,labcol=color_resid_dropconstant)
+
+ggord(lda_birdreserv, reservation_min3, xlim=c(-7.5,7.5),ylim = c(-5, 6),alpha=0,alpha_el=0.5,var_sub = c("ACFL","HOWA","PIWO","SOSP"))
+
+
+spe.class <- predict(lda_birdreserv)$class
+
+# Posterior probabilities that the objects belong to those
+# groups
+spe.post <- predict(lda_birdreserv)$posterior
+
+# Table of prior vs. predicted classifications
+(spe.table <- table(reservation_min3, spe.class))
+
+
+# Proportion of corrected classification
+diag(prop.table(spe.table, 1))
+
+```
 
 
 ### Community associations
@@ -806,11 +865,25 @@ Resident or migratory: Dark-eyed Junco = **1 species**
 We also can explore linear discriminant analysis:
 
 ```{r,eval=FALSE}
+community<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$community.x)
 
-community<-factor(CMP_bbs_pcap_join_pcaponly_pcapsum$community)
+birdcomm_bin_drop1<-birdcomm_bin[colSums(birdcomm_bin_min3) > 1]
+
+
+color_resid_drop1<-color_resid[(colnames(birdcomm_bin) %in% colnames(birdcomm_bin_drop1))]
+
+
+lda_birdcomm<-lda(birdcomm_bin_drop1, grouping = community)
+lda_birdcomm_full<-lda(birdcomm_bin, grouping = community)
+
 ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),txt=NULL,arrow=NULL)
 ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),txt=NULL,arrow=NULL,alpha=0,alpha_el=0.5)
-ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),alpha=0,alpha_el=0.5)
+ggord(lda_birdcomm, community, xlim=c(-15,30),ylim = c(-15, 15),alpha=0,alpha_el=0.5,labcol=color_resid_drop1)
+
+ggord(lda_birdcomm_full, community, xlim=c(-15,30),ylim = c(-15, 15),alpha=0,alpha_el=0.5,labcol=color_resid)
+
+ggord(lda_birdcomm_full, community, xlim=c(-10,25),ylim = c(-7.5, 12.5),alpha=0,alpha_el=0.5,var_sub = c("ACFL","HOWA","PIWO","SOSP"))
+
 
 
 ```
@@ -836,6 +909,21 @@ CMP_bbs_pcap_join_pcaponly_commsumm<-CMP_bbs_pcap_join_pcaponly_commsumm[,-1]
 CMP_bbs_pcap_join_pcaponly_commsumm_presabs<-CMP_bbs_pcap_join_pcaponly_commsumm %>% mutate_if(is.numeric, ~1 * (. >= 1))
 
 CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t<-t(CMP_bbs_pcap_join_pcaponly_commsumm_presabs)
+
+CMP_bbs_pcap_join_pcaponly_reservsumm<-CMP_bbs_pcap_join_pcaponly %>% 
+  group_by(reservatio,species_4_) %>%
+  summarise(n=n()) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0) 
+CMP_bbs_pcap_join_pcaponly_reservsumm<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_reservsumm,var = "reservatio")
+
+CMP_bbs_pcap_join_pcaponly_reservsumm<-CMP_bbs_pcap_join_pcaponly_reservsumm[,-1]
+
+CMP_bbs_pcap_join_pcaponly_reservsumm_presabs<-CMP_bbs_pcap_join_pcaponly_reservsumm %>% mutate_if(is.numeric, ~1 * (. >= 1))
+
+CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t<-t(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs)
+
+
 
 birdcomm_bin_t<-t(birdcomm_bin)
 
@@ -889,6 +977,26 @@ visNetwork(nodes = nodes, edges = edges) %>%
 
 
 ```{r,warning=FALSE,message=FALSE,results='hide'}
+# presence/absence across reservations
+
+
+co_reserv <- print(cooccur(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t, spp_names = TRUE))
+
+co_reserv[, "sp1_name"] == rownames(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t)[co_reserv$sp1]
+co_reserv[, "sp2_name"] == rownames(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t)[co_reserv$sp2]
+
+
+nodes_reserv <- data.frame(id = 1:nrow(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t),
+                    label = rownames(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t),
+                    color = color_resid,
+                    shadow = TRUE) 
+edges_reserv <- data.frame(from = co_reserv$sp1, to = co_reserv$sp2,
+                    color = ifelse(co_reserv$p_lt <= 0.05, "#B0B2C1", "#3C3F51"),
+                    dashes = ifelse(co_reserv$p_lt <= 0.05, TRUE, FALSE))
+
+coocc_reserv<-cooccur(CMP_bbs_pcap_join_pcaponly_reservsumm_presabs_t, spp_names = TRUE)
+
+
 
 # presence/absence across habitats
 
@@ -914,6 +1022,8 @@ coocc_comm<-cooccur(CMP_bbs_pcap_join_pcaponly_commsumm_presabs_t, spp_names = T
 visNetwork(nodes = nodes_comm, edges = edges_comm) %>%
     visIgraphLayout(layout = "layout_with_kk")
 plot(coocc_comm)
+
+plot(coocc_reserv)
 ```
 
 
@@ -2241,6 +2351,8 @@ Finally, we can also run some plots depicting covariate effects for each species
 
 covars<-read.csv("outmsglobal_covar.csv",header=T)
 
+covars
+
 covars_tolerance<-subset(covars,covars$Covariate=="tol_rel")
 
 covars_tolerance<-covars_tolerance[order(covars_tolerance$Mean),]
@@ -2249,7 +2361,7 @@ spp_tolorder<-factor(covars_tolerance$Species,levels=covars_tolerance$Species)
 
 covars_tolerance$spporder<-spp_tolorder
 
-ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.1652)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Relative cover of tolerant plants")
 
 covars_svp<-subset(covars,covars$Covariate=="svp")
 
@@ -2260,7 +2372,7 @@ spp_svporder<-factor(covars_svp$Species,levels=covars_svp$Species)
 
 covars_svp$spporder<-spp_svporder
 
-ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0594)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of seedless vascular plants")
 
 
 covars_dicot<-subset(covars,covars$Covariate=="dicot")
@@ -2272,7 +2384,7 @@ spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
 
 covars_dicot$spporder<-spp_dicotorder
 
-ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2461)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of dicots")
 
 
 covars_cyper<-subset(covars,covars$Covariate=="cyper")
@@ -2284,7 +2396,7 @@ spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
 
 covars_cyper$spporder<-spp_cyperorder
 
-ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.1375)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
 
 
 covars_smalltree<-subset(covars,covars$Covariate=="small_tree")
@@ -2296,7 +2408,7 @@ spp_treeorder<-factor(covars_smalltree$Species,levels=covars_smalltree$Species)
 
 covars_smalltree$spporder<-spp_treeorder
 
-ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.0672)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of small trees")
 
 
 
@@ -2309,7 +2421,7 @@ spp_shruborder<-factor(covars_shrub$Species,levels=covars_shrub$Species)
 
 covars_shrub$spporder<-spp_shruborder
 
-ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.2181)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of shrubs")
 
 
 covars_hydro<-subset(covars,covars$Covariate=="hydro")
@@ -2320,7 +2432,7 @@ spp_hydroorder<-factor(covars_hydro$Species,levels=covars_hydro$Species)
 
 covars_hydro$spporder<-spp_hydroorder
 
-ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=0.2068)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of hydrophytes")
 
 covars_subcanopy<-subset(covars,covars$Covariate=="subcanopy")
 
@@ -2330,7 +2442,7 @@ spp_subcanopyorder<-factor(covars_subcanopy$Species,levels=covars_subcanopy$Spec
 
 covars_subcanopy$spporder<-spp_subcanopyorder
 
-ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0393)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of subcanopy")
 
 covars_canopy<-subset(covars,covars$Covariate=="canopy")
 
@@ -2340,9 +2452,29 @@ spp_canopyorder<-factor(covars_canopy$Species,levels=covars_canopy$Species)
 
 covars_canopy$spporder<-spp_canopyorder
 
-ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+geom_vline(xintercept=-0.0702)+theme_classic(base_size=12)
+ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of canopy")
 ```
 
 
+### covariates by migratory status
+
+```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
+
+migratecovars<-read.csv("outmsglobal_covar_migratory_sig.csv",header=T)
+
+migratecovars_occ<-migratecovars[migratecovars$Process %in% "Occupancy",]
+
+migratecovars_occ_nointercept<-migratecovars_occ[!(migratecovars_occ$Covariate %in% "Intercept"),]
+
+migratecovars_occ_nointercept_sig<-migratecovars_occ_nointercept[(migratecovars_occ_nointercept$Sig %in% "YES"),]
 
 
+migratecovars_sum<-migratecovars_occ_nointercept_sig %>%
+  dplyr::select(Covariate, Mean,Migratory) %>%
+  group_by(Migratory,Covariate) %>%
+  summarise(Mean_migratory=mean(Mean),SD_migratory=sd(Mean))
+
+
+p<-ggplot(migratecovars_sum,aes(x=Migratory,y=Mean_migratory,fill=Covariate))+geom_col(position="dodge")+theme_classic(base_size=20)
+p
+```
