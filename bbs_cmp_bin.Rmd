@@ -1473,7 +1473,8 @@ sitechecks_surveyhistory<-sitechecks %>%
   group_by(simp_plot) %>% 
   mutate(check=as.character(dense_rank(date))) %>%
   arrange(simp_plot) %>%
-  spread(check,datecount) %>%
+  spread(check,datecount) 
+%>%
   summarise(`1` = mean(`1`,na.rm=T),
             `2`=mean(`2`,na.rm=T),
             `3`=mean(`3`,na.rm=T),
