@@ -179,7 +179,9 @@ corvar_land<-findCorrelation(landcomm_cor,cutoff=0.6)
 
 landcomm_drop<-landcomm[,-corvar_land]
 
+#also dropping developed edge
 
+landcomm_drop<-landcomm_drop[,-5]
 ```
 
 We can then check correlations between PCAP and landscape covariates.
