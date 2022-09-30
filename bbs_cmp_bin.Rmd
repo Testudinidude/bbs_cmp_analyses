@@ -1,7 +1,7 @@
 ---
 title: "Breeding Bird Surveys - Cleveland Metroparks (new and improved, with landscape covariates!)"
 author: "Nathan W. Byer"
-date: "8/26/2022"
+date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
@@ -146,8 +146,7 @@ Next, we separate out our PCAP data.
 vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,5:26]
 
 ```
-
-Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (~5 years is likely not enough for substantial land cover change).
+ Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (~5 years is likely not enough for substantial land cover change).
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 landcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,142:153]
@@ -612,7 +611,7 @@ barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('bl
 
 ```
 
-Some interesting things are going on here. RDA1 primarily captures both plot-scale and landscape-scale indicators of disturbance - namely, relative cover of tolerant plant species (plot level) and landscape disturbance index (at a landscape-level) contrasted with indicators of less disturbance - namely, further distances to developed land, more seedless vascular plants, more cyperaceae, and more dicots. This one axis explains upwards of 5% of variation - so we are doing pretty well in that regard. Across all seven axes, we are approaching about 11% explained variance. In addition, stepwise selection basically confirms variable selection for the land cover and vegetation datasets run separately - the same variables included in those best-supported model statements are in this full model.
+Some interesting things are going on here. RDA1 primarily captures both plot-scale and landscape-scale indicators of disturbance - namely, relative cover of tolerant plant species (plot level) and landscape development index (at a landscape-level) contrasted with indicators of less disturbance - namely, further distances to developed land, more seedless vascular plants, more cyperaceae, and more dicots. This one axis explains upwards of 5% of variation - so we are doing pretty well in that regard. Across all seven axes, we are approaching about 11% explained variance. In addition, stepwise selection basically confirms variable selection for the land cover and vegetation datasets run separately - the same variables included in those best-supported model statements are in this full model.
 
 
 We can also explore bird species most significantly associated with our constrained ordination axes, too. We will focus on the full (land cover and vegetation) ordination.
@@ -2683,14 +2682,13 @@ knitr::include_app("https://testudinidude.shinyapps.io/bbsapp/")
 Finally, we can also run some plots depicting covariate effects for each species. These should make it clear if and when species appear to be particularly related to certain vegetative characteristics - and thus may serve as "indicators" for these characteristics. 
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
-options(max.print=1000000)
-sink("outmsfulllandveg_90percent.txt")
-print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
-sink() 
+#options(max.print=1000000)
+#sink("outmsfulllandveg_90percent.txt")
+#print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
+#sink() 
 
 covars<-read.csv("outmslandveg_covar_migratory.csv",header=T)
 
-covars
 
 covars_ldi<-subset(covars,covars$Covariate=="ldi.index.score")
 
@@ -2700,7 +2698,7 @@ spp_tolorder<-factor(covars_ldi$Species,levels=covars_ldi$Species)
 
 covars_ldi$spporder<-spp_tolorder
 
-ggplot(aes(x=Mean,y=spp_tolorder),data=covars_ldi)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Landscape disturbance index")
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_ldi)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Landscape development index")
 
 
 covars_intercept<-subset(covars,covars$Covariate=="Intercept")
@@ -2729,17 +2727,6 @@ covars_developed$spporder<-spp_tolorder
 ggplot(aes(x=Mean,y=spp_tolorder),data=covars_developed)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("developed")
 
 
-covars_developed.edge<-subset(covars,covars$Covariate=="developed.edge")
-
-covars_developed.edge<-covars_developed.edge[order(covars_developed.edge$Mean),]
-
-spp_tolorder<-factor(covars_developed.edge$Species,levels=covars_developed.edge$Species)
-
-covars_developed.edge$spporder<-spp_tolorder
-
-ggplot(aes(x=Mean,y=spp_tolorder),data=covars_developed.edge)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("developed.edge")
-
-
 covars_tolerance<-subset(covars,covars$Covariate=="tol_rel")
 
 covars_tolerance<-covars_tolerance[order(covars_tolerance$Mean),]
@@ -2751,8 +2738,6 @@ covars_tolerance$spporder<-spp_tolorder
 ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Relative cover of tolerant plants")
 
 
-
-
 covars_svp<-subset(covars,covars$Covariate=="svp")
 
 covars_svp<-covars_svp[order(covars_svp$Mean),]
@@ -2762,7 +2747,7 @@ spp_svporder<-factor(covars_svp$Species,levels=covars_svp$Species)
 
 covars_svp$spporder<-spp_svporder
 
-ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of seedless vascular plants")
+ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of seedless vascular plants")
 
 
 covars_dicot<-subset(covars,covars$Covariate=="dicot")
@@ -2774,7 +2759,7 @@ spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
 
 covars_dicot$spporder<-spp_dicotorder
 
-ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of dicots")
+ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of dicots")
 
 
 covars_cyper<-subset(covars,covars$Covariate=="cyper")
@@ -2786,63 +2771,9 @@ spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
 
 covars_cyper$spporder<-spp_cyperorder
 
-ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
+ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
 
 
-covars_smalltree<-subset(covars,covars$Covariate=="small_tree")
-
-covars_smalltree<-covars_smalltree[order(covars_smalltree$Mean),]
-
-
-spp_treeorder<-factor(covars_smalltree$Species,levels=covars_smalltree$Species)
-
-covars_smalltree$spporder<-spp_treeorder
-
-ggplot(aes(x=Mean,y=spp_treeorder),data=covars_smalltree)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of small trees")
-
-
-
-covars_shrub<-subset(covars,covars$Covariate=="shrub")
-
-covars_shrub<-covars_shrub[order(covars_shrub$Mean),]
-
-
-spp_shruborder<-factor(covars_shrub$Species,levels=covars_shrub$Species)
-
-covars_shrub$spporder<-spp_shruborder
-
-ggplot(aes(x=Mean,y=spp_shruborder),data=covars_shrub)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of shrubs")
-
-
-covars_hydro<-subset(covars,covars$Covariate=="hydro")
-
-covars_hydro<-covars_hydro[order(covars_hydro$Mean),]
-
-spp_hydroorder<-factor(covars_hydro$Species,levels=covars_hydro$Species)
-
-covars_hydro$spporder<-spp_hydroorder
-
-ggplot(aes(x=Mean,y=spp_hydroorder),data=covars_hydro)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of hydrophytes")
-
-covars_subcanopy<-subset(covars,covars$Covariate=="subcanopy")
-
-covars_subcanopy<-covars_subcanopy[order(covars_subcanopy$Mean),]
-
-spp_subcanopyorder<-factor(covars_subcanopy$Species,levels=covars_subcanopy$Species)
-
-covars_subcanopy$spporder<-spp_subcanopyorder
-
-ggplot(aes(x=Mean,y=spp_subcanopyorder),data=covars_subcanopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of subcanopy")
-
-covars_canopy<-subset(covars,covars$Covariate=="canopy")
-
-covars_canopy<-covars_canopy[order(covars_canopy$Mean),]
-
-spp_canopyorder<-factor(covars_canopy$Species,levels=covars_canopy$Species)
-
-covars_canopy$spporder<-spp_canopyorder
-
-ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_errorbarh(aes(xmin=X5.0CI,xmax=X95.0CI))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of canopy")
 ```
 
 
@@ -2850,7 +2781,7 @@ ggplot(aes(x=Mean,y=spp_canopyorder),data=covars_canopy)+geom_point()+geom_error
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
 
-migratecovars<-read.csv("outmsglobal_covar_migratory_sig.csv",header=T)
+migratecovars<-read.csv("outmslandveg_covar_migratory_sig.csv",header=T)
 
 migratecovars_occ<-migratecovars[migratecovars$Process %in% "Occupancy",]
 
