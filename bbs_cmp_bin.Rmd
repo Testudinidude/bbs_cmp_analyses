@@ -17,7 +17,6 @@ knit: (function(input_file, encoding) {
 runtime: shiny
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,out.width = "100%")
 
@@ -75,11 +74,11 @@ lda_birdcomm<-readRDS("lda_birdcomm.rds")
 
 # The dataset
 
-Tim Krynak, Erik Shaffer, Jen Brumfield, and other Cleveland Metroparks and affiliated colleagues conducted Breeding Bird Surveys (BBS) at a total of 211 routes between 2017 and 2021. 164 of these routes overlapped with long-term vegetation monitoring efforts through the Cleveland Metroparks Plant Community Assessment Program (PCAP). This provided an excellent opportunity to explore the potential relationships between vegetative composition, landscape structure, and breeding bird ecology and community composition. 
+Tim Krynak, Erik Shaffer, Jen Brumfield, and other Cleveland Metroparks and affiliated colleagues conducted Breeding Bird Surveys (BBS) at a total of 211 routes between 2017 and 2021. 164 of these routes overlapped with long-term vegetation monitoring efforts through the Cleveland Metroparks Plant Community Assessment Program (PCAP). This provided an excellent opportunity to explore the potential relationships between vegetative composition, landscape structure, and breeding bird ecology and community composition.
 
 # Initial processing
 
-First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time. 
+First, we just read in the full BBS dataset. For our purposes, we will remove any BBS observations not paired with PCAP plots. We can also visualize the distribution of survey effort through time.
 
 ```{r}
 CMP_bbs_pcap_join<-read.csv("G:/NaturalResources/Byer/datasets/BBS/CMP_bbs_pcapjoin_elimWC_EATO.csv",header=T)
@@ -140,13 +139,14 @@ birdcomm[is.na(birdcomm)] <- 0
 
 ```
 
-Next, we separate out our PCAP data. 
+Next, we separate out our PCAP data.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,5:26]
 
 ```
- Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (~5 years is likely not enough for substantial land cover change).
+
+Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (\~5 years is likely not enough for substantial land cover change).
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
 landcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,142:153]
@@ -200,21 +200,21 @@ No covariates were overly correlated in this dataset, so we can proceed.
 
 Now, we have:
 
-a) a vegecomm dataset - which representing PCAP measurements for each of the 164 BBS/PCAP plots.
-b) a birdcomm dataset - representing presence/absence of each bird species for each survey in each plot.
-c) a landcomm dataset - representing landscape covariates associated with these PCAP plots.
+a)  a vegecomm dataset - which representing PCAP measurements for each of the 164 BBS/PCAP plots.
+b)  a birdcomm dataset - representing presence/absence of each bird species for each survey in each plot.
+c)  a landcomm dataset - representing landscape covariates associated with these PCAP plots.
 
-Note that we are not explicitly considering differences in bird counts (or occupancy, or detectability) through time at this point - we will get to that later. For now, we just want to explore broad associations between these three datasets! 
+Note that we are not explicitly considering differences in bird counts (or occupancy, or detectability) through time at this point - we will get to that later. For now, we just want to explore broad associations between these three datasets!
 
-Note as of 6/13/2022 - we will also want to only work with only binary data. 
+Note as of 6/13/2022 - we will also want to only work with only binary data.
 
 # Community analyses
 
- When working with datasets like these, we first have to acknowledge that these datasets are multivariate - with many possible predictor covariates (for example, plot-level characteristics) and many possible response covariates (for example, presence/absence of species in a plot). Fortunately, community ecology as a field has developed a number of standard approaches for exploring multivariate datasets, of which the most common is (arguably!) ordination. In essence, ordination techniques try to shrink down highly multidimensional datasets into a more manageable number of dimensions - often just a handful (and for initial plotting, typically just two). There are many, many possible ordination tools available for exploring community ecological datasets, and we will explore a few. 
+When working with datasets like these, we first have to acknowledge that these datasets are multivariate - with many possible predictor covariates (for example, plot-level characteristics) and many possible response covariates (for example, presence/absence of species in a plot). Fortunately, community ecology as a field has developed a number of standard approaches for exploring multivariate datasets, of which the most common is (arguably!) ordination. In essence, ordination techniques try to shrink down highly multidimensional datasets into a more manageable number of dimensions - often just a handful (and for initial plotting, typically just two). There are many, many possible ordination tools available for exploring community ecological datasets, and we will explore a few.
 
 ## unconstrained ordination
 
-In this section, we will be exploring ways of exploring the bird dataset on its own - basically, without any predictors. 
+In this section, we will be exploring ways of exploring the bird dataset on its own - basically, without any predictors.
 
 First, we must reclassify our bird community data onto a binary scale - ranging from 0 (no detection) to 1 (detection).
 
@@ -275,7 +275,7 @@ while a bit hard to interpret, plots within Rocky River (RR) seem to be the most
 
 ### metric multidimensional scaling (Principal Coordinates Analysis)
 
-You can think of this as a distance-based analog to PCA. In this case, since we are using Bray-Curtis distances on binary data (presence/absence), this is equivalent to Sorensen's index. 
+You can think of this as a distance-based analog to PCA. In this case, since we are using Bray-Curtis distances on binary data (presence/absence), this is equivalent to Sorensen's index.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE, echo = FALSE}
 bird_pcoa<-capscale(birdcomm_bin~1,distance="bray")
@@ -287,8 +287,6 @@ text(bird_pcoa,display="species",col=BBSMigrants_sub$color_resid,cex=0.6)
 points(bird_pcoa,display="sites",pch=16) #adds filled circles for sites
 
 ```
-
-
 
 ### non-metric multidimensional scaling
 
@@ -339,7 +337,7 @@ fitpca_spp
 
 Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Great Crested Flycatcher, Hooded Warbler, Indigo Bunting, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **18 species**
 
-Resident: American Crow, American Kestrel, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **8 species** 
+Resident: American Crow, American Kestrel, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **8 species**
 
 Short-distance migrant: American Goldfinch, Black-capped Chickadee, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Eastern Bluebird, Eastern Meadowlark, Field Sparrow, Gray Catbird, House Wren, Killdeer, Mourning Dove, Northern Flicker, Northern Rough-winged Swallow, Red-winged Blackbird, Tree Swallow, Turkey Vulture = **19 species**
 
@@ -347,7 +345,7 @@ Resident or migratory: Canada Goose, Dark-eyed Junco = **2 species**
 
 We can repeat this procedure for the PCOA results too. Whereas PCA (above) was based on summarizing our bird community in the fewest number of axes that explain the most *variance*, PCOA is trying to maximize *distance* between plots. This is somewhat semantic in many cases, but will lead to differing representations of which birds are most associated with ordination axes.
 
-Anyway! on to the PCOA: 
+Anyway! on to the PCOA:
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 # envfit() takes the output of metaMDS() and the species matrix you created
@@ -423,11 +421,11 @@ ggplot(plot_df_pcoa, aes(x = MDS1, y = MDS2)) +
 
 ```
 
-So, now we have **44 species** that contribute most to community distance between plots. 
+So, now we have **44 species** that contribute most to community distance between plots.
 
-Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Chimney Swift, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee,  Hooded Warbler, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Ovenbird, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **21 species**
+Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Chimney Swift, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Hooded Warbler, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Ovenbird, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Veery, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **21 species**
 
-Resident: European Starling, Hairy Woodpecker, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
+Resident: European Starling, Hairy Woodpecker, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species**
 
 Short-distance migrant: American Robin, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Eastern Towhee, Field Sparrow, Gray Catbird, House Wren, Mourning Dove, Northern Flicker, Northern Rough-winged Swallow, Red-winged Blackbird, Tree Swallow = **15 species**
 
@@ -473,39 +471,39 @@ nmds_plot_new
 fit_spp
 ```
 
-So, now we have **40 species** that contribute most to community distance between plots. 
+So, now we have **40 species** that contribute most to community distance between plots.
 
 Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Hooded Warbler, Indigo Bunting, Louisiana Water-Thrush, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler, Yellow-Throated Vireo = **18 species**
 
-Resident: American Crow, European Starling, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
+Resident: American Crow, European Starling, House Finch, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species**
 
-Short-distance migrant: American Robin, Black-Capped Chickadee, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Field Sparrow, Gray Catbird, House Wren, Mourning Dove, Northern Flicker,  Red-winged Blackbird, Tree Swallow = **14 species**
+Short-distance migrant: American Robin, Black-Capped Chickadee, Blue-Gray Gnatcatcher, Brown-headed Cowbird, Brown Thrasher, Cedar Waxwing, Common Grackle, Field Sparrow, Gray Catbird, House Wren, Mourning Dove, Northern Flicker, Red-winged Blackbird, Tree Swallow = **14 species**
 
 Resident or migratory: Dark-eyed Junco = **1 species**
 
 While these three sets of species are pretty similar, we can also take a look at which species are different across approaches.
- 
+
 ```{r}
 outersect(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)
 ```
 
-So American Goldfinch, American Kestrel, Canada Goose, Chimney Swift, Eastern Bluebird, Eastern Meadowlark, Easter Towhee, Great-Crested Flycatcher, Killdeer, Ovenbird, Tufted Titmouse,  Turkey Vulture, and Veery. At least to me, nothing particularly sticks out as a commonality across these species, but it may make just as much sense to simply pool these species across approaches:
+So American Goldfinch, American Kestrel, Canada Goose, Chimney Swift, Eastern Bluebird, Eastern Meadowlark, Easter Towhee, Great-Crested Flycatcher, Killdeer, Ovenbird, Tufted Titmouse, Turkey Vulture, and Veery. At least to me, nothing particularly sticks out as a commonality across these species, but it may make just as much sense to simply pool these species across approaches:
 
 ```{r}
 sort(unique(c(fit_spp$species,fit_pcoa_spp$species,fitpca_spp$species)))
 ```
 
-This gives us a list of 54 bird species that seem to be particularly differentiated/variable across plots. That is about half of the total number of species in the overall dataset. 
+This gives us a list of 54 bird species that seem to be particularly differentiated/variable across plots. That is about half of the total number of species in the overall dataset.
 
 As we proceed, we will begin layering on our environmental datasets using three main approaches: constrained ordination, linear models of species richness, and multi-species occupancy models.
 
 ## constrained
 
-Whereas the ordination approaches above were focused on unconstrained ordination - in this case, exploring how species are arranged between sample sites - there is an entire suite of approaches that address how environmental gradients shape community assemblages among sample sites. These are called **constrained** ordination approaches. I am personally a huge proponent of redundancy analysis (RDA) as a flexible constrained ordination approach. Taken from the GUSTA ME tutorial on RDA: 
+Whereas the ordination approaches above were focused on unconstrained ordination - in this case, exploring how species are arranged between sample sites - there is an entire suite of approaches that address how environmental gradients shape community assemblages among sample sites. These are called **constrained** ordination approaches. I am personally a huge proponent of redundancy analysis (RDA) as a flexible constrained ordination approach. Taken from the GUSTA ME tutorial on RDA:
 
 "*RDA can also be considered a constrained version of principal components analysis (PCA), wherein canonical axes - built from linear combinations of response variables - must also be linear combinations of the explanatory variables (i.e. fitted by [multiple linear regression]). The RDA approach generates one ordination in the space defined by the matrix of response variables and another in the space defined by the matrix of explanatory variables.*"
 
-So, in essence, the ordination plot produced will depict an optimal arrangement of environmental axes (RDA1, 2, etc.) that maximally explains variation in the species dataset. 
+So, in essence, the ordination plot produced will depict an optimal arrangement of environmental axes (RDA1, 2, etc.) that maximally explains variation in the species dataset.
 
 We are going to use stepwise selection to explore which PCAP covariates most explain plot-level differences.
 
@@ -537,7 +535,7 @@ ggord(p_step,  xlim=c(-1.25,1),ylim = c(-0.5, 1),txt=4,arrow=TRUE,ptslab=TRUE,ad
 
 ```
 
-So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species. 
+So this tells us that the most explanatory group of PCAP covariates is relative cover of tolerant plants (tol_rel), cover of dicots, cover of seedless vascular plants (svp), and cover of sedges (cyper). Rather conveniently, the relative cover of dicots, seedless vascular plants, and sedges is negatively associated with the relative cover of tolerant plant species.
 
 As a quick caveat, these four variables only explain about 7.3% of the variation, as seen here (red is our environmental axes, black is our unconstrained axes):
 
@@ -551,9 +549,7 @@ barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('bl
 
 This is not that terribly uncommon for redundancy analyses - It is often difficult to find environmental gradients that explain all of the variance in large datasets like ours. Biologically, we likely do not necessarily expect that a single environmental gradient alone drives all of the variation in bird presence/absence, and intuitively know that we also have to worry about observer effects, weather, and other unmeasured characteristics. Regardless of any of the above, the ordination is significant - as are the relationships with these covariates, so we can safely say that nearly 10% of the variation in our bird species dataset is explainable by these 4 PCAP covariates!
 
-
 We can also explore just the landscape covariate associations:
-
 
 ```{r}
 
@@ -613,7 +609,6 @@ barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('bl
 
 Some interesting things are going on here. RDA1 primarily captures both plot-scale and landscape-scale indicators of disturbance - namely, relative cover of tolerant plant species (plot level) and landscape development index (at a landscape-level) contrasted with indicators of less disturbance - namely, further distances to developed land, more seedless vascular plants, more cyperaceae, and more dicots. This one axis explains upwards of 5% of variation - so we are doing pretty well in that regard. Across all seven axes, we are approaching about 11% explained variance. In addition, stepwise selection basically confirms variable selection for the land cover and vegetation datasets run separately - the same variables included in those best-supported model statements are in this full model.
 
-
 We can also explore bird species most significantly associated with our constrained ordination axes, too. We will focus on the full (land cover and vegetation) ordination.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
@@ -670,9 +665,6 @@ ggplot(aes(x=RDA1,y=species),data=fitconcrda_spp_order)+geom_point()+theme_class
 
 This is a pretty neat plot - Acadian Flycatcher, Scarlet Tanager, Eastern Wood-Pewee, White-breasted Nuthatch, Hooded Warbler, Red-Eyed Vireo, Dark-Eyed Junco, Wood Thrush, Hairy Woodpeckers, and Lousiana Water-Thrush all appear to be associated with higher sedge, seedless vascular plant, and dicot cover and lower cover of tolerant plants. In contrast, Yellow Warblers, Orchard Orioles, Red-Winged Blackbirds, European Starlings, Warbling Vireos, Song Sparrows, Grey Catbirds, Tree Swallows, Mourning Doves, and Cedar Waxwings are all associated with more tolerant plants. In addition, virtually all of our more tolerant vegetation-associated species are short-distance migrants, whereas the less tolerant vegetation-associated species are mostly neotropical migrants.
 
-
-
-
 ### constrained - sites
 
 While we have already explored environmental associations, we might also want to know what species are most differentiated between reservations. We will then use similar code to that used above to explore species that are most differentiated between reservations.
@@ -728,7 +720,7 @@ rda_reservation_plot_new
 
 ```
 
-Interesting! So when we consider reservation-of-origin, Hinckley seems to have a pretty unique bird community overall, and groups negatively along RDA1. In contrast, Brookside, Ohio and Erie Canal, and Washington all group positively along RDA1 - and are all quite heavily urbanized. 
+Interesting! So when we consider reservation-of-origin, Hinckley seems to have a pretty unique bird community overall, and groups negatively along RDA1. In contrast, Brookside, Ohio and Erie Canal, and Washington all group positively along RDA1 - and are all quite heavily urbanized.
 
 While I personally think the environmental gradient analyses are a bit more interesting, this does highlight reservations that are more or less distinct in bird community space. We can also plot just the reservations alone too:
 
@@ -737,7 +729,6 @@ ggplot(plot_df_reservations, aes(x = RDA1, y = RDA2)) +
   coord_fixed() +
   geom_text(data=as.data.frame(fit_reservations),aes(label=reservations))+xlim(-2,4)+ylim(-4,2)
 ```
-
 
 #### lda of reservations
 
@@ -781,7 +772,6 @@ spe.post <- predict(lda_birdreserv)$posterior
 diag(prop.table(spe.table, 1))
 
 ```
-
 
 ### Community associations
 
@@ -850,18 +840,15 @@ ggplot(plot_df_community, aes(x = RDA1, y = RDA2)) +
 
 ```
 
-
-For these ordinations, RDA1 seems to differentiate birds along an approximate gradient of forest cover - with negative loadings indicating more hardwood-associated bird communities and more positive loadings indicating more mesic/meadow-associated areas. Intriguingly, RDA2 then groups Mesic Meadows out from all other community types - with more positive values indicating more Mesic Meadow-associated birds. 
-
+For these ordinations, RDA1 seems to differentiate birds along an approximate gradient of forest cover - with negative loadings indicating more hardwood-associated bird communities and more positive loadings indicating more mesic/meadow-associated areas. Intriguingly, RDA2 then groups Mesic Meadows out from all other community types - with more positive values indicating more Mesic Meadow-associated birds.
 
 Neotropical migrants: Acadian Fly-Catcher, Baltimore Oriole, Barn Swallow, Common Yellowthroat, Eastern Kingbird, Eastern Wood-Pewee, Hooded Warbler, Indigo Bunting, Orchard Oriole, Rose-Breasted Grosbeak, Red-Eyed Vireo, Scarlet Tanager, Warbling Vireo, Willow Flycatcher, Wood Thrush, Yellow Warbler = **16 species**
 
-Resident: Carolina Wren, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species** 
+Resident: Carolina Wren, European Starling, Hairy Woodpecker, House Sparrow, Pileated Woodpecker, Song Sparrow, White-Breasted Nuthatch = **7 species**
 
 Short-distance migrant: Brown Thrasher, Cedar Waxwing, Common Grackle, Gray Catbird, House Wren, Killdeer, Mourning Dove, Northern Rough-winged Swallow, Purple Finch, Red-winged Blackbird, Tree Swallow = **11 species**
 
 Resident or migratory: Dark-eyed Junco = **1 species**
-
 
 We also can explore linear discriminant analysis:
 
@@ -890,8 +877,6 @@ ggord(lda_birdcomm_full, community, xlim=c(-10,25),ylim = c(-7.5, 12.5),alpha=0,
 ```
 
 ![lda](./lda_birdcomm.png)
-
-
 
 ### co-occurrence networks
 
@@ -974,9 +959,6 @@ visNetwork(nodes = nodes, edges = edges) %>%
 
 ![coccur](./coccurrence_birds_zoom.png)
 
-
-
-
 ```{r,warning=FALSE,message=FALSE,results='hide'}
 # presence/absence across reservations
 
@@ -1027,7 +1009,6 @@ plot(coocc_comm)
 plot(coocc_reserv)
 ```
 
-
 ### Now pRDA - with variance partitioning.
 
 As a final sanity check, it can sometimes be difficult to disentangle geographic effects from environmental effects in these sorts of analyses. For example, what if (hypothetically) cover of seedless vascular plants is negatively associated with geographic coordinates? Thus, we might want to briefly check if the variance explained by our environmental axes is (or is not) confounded with geography. To do so, we will use the varpart() function, which partitions variance between model components:
@@ -1050,10 +1031,9 @@ plot(pcap_landveggeog)
 
 So - most of this variation is associated with these top covariates (X1), and NOT with latitude and longitude alone (X2). Good to see - this means we can be confident that these are actual environmental effects!
 
-
 ## community richness metrics
 
-Next, we can explore the relationships between species richness and plot characteristics. We will start with plot-level explorations. 
+Next, we can explore the relationships between species richness and plot characteristics. We will start with plot-level explorations.
 
 ### plot-level analyses
 
@@ -1250,7 +1230,7 @@ aictab(richmods)
 
 ```
 
-So richness - at a plot level, and after accounting for plot identity - is determined by how many tolerant species are in the associated plot. And this is much more predictive than any other model. 
+So richness - at a plot level, and after accounting for plot identity - is determined by how many tolerant species are in the associated plot. And this is much more predictive than any other model.
 
 Here is the plot for this top model:
 
@@ -1258,7 +1238,6 @@ Here is the plot for this top model:
 
 ggplot(aes(x=tol_rel,y=S),data=vegecomm_richness)+geom_point()+geom_smooth(method="lm")
 ```
-
 
 We can also verify that our mixed effects model fits better compared to the fixed effects model.
 
@@ -1271,7 +1250,7 @@ anova(Rich_tol_rel, Rich_tol_rel_fixed)
 
 This confirms that we chose correctly - the mixed effects model fits better than the fixed effects-only model.
 
-We can also inspect how this observation-level mixed effect model compares to a  plot-level, fixed effect model (in other words - a view that just looks at richness at a plot level - aggregating over observations).
+We can also inspect how this observation-level mixed effect model compares to a plot-level, fixed effect model (in other words - a view that just looks at richness at a plot level - aggregating over observations).
 
 ```{r}
 S_tol_rel<-lm(S~tol_rel,vegecomm_richness)
@@ -1281,11 +1260,11 @@ confint(Rich_tol_rel)
 
 ```
 
-We can see that, while the covariate estimate for the plot-level model is higher, it is also estimated with much more variance (its confidence intervals are wider). This is not surprising - our functional sample size for this dataset is 164 plots. In contrast, while the observation-level mixed-effects model has a lower covariate estimate, we have tighter confidence intervals around this estimate - likely by virtue of a larger number of samples and a more effectively parameterized model. 
+We can see that, while the covariate estimate for the plot-level model is higher, it is also estimated with much more variance (its confidence intervals are wider). This is not surprising - our functional sample size for this dataset is 164 plots. In contrast, while the observation-level mixed-effects model has a lower covariate estimate, we have tighter confidence intervals around this estimate - likely by virtue of a larger number of samples and a more effectively parameterized model.
 
 ### reservation-level analyses
 
-Now we are going to re-summarize this dataset at a reservation-level. While we will have limited power for many comparisons of interest, this could provide some indication of whether covariate relationships vary across scales. 
+Now we are going to re-summarize this dataset at a reservation-level. While we will have limited power for many comparisons of interest, this could provide some indication of whether covariate relationships vary across scales.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
 
@@ -1435,8 +1414,7 @@ ggplot(aes(x=reservatio,y=reservspcount),data=vegecomm_reserv_richness)+geom_col
 ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col()+theme_classic(base_size=24)+xlab("Reservation")+ylab("Rarefied species richness")
 ```
 
-In confirmation of our prior ordination plots, it now appears that Rocky River is one of the most species rich areas - followed by Hinckley, South Chagrin, Bedford, and Brecksville. 
-
+In confirmation of our prior ordination plots, it now appears that Rocky River is one of the most species rich areas - followed by Hinckley, South Chagrin, Bedford, and Brecksville.
 
 #### reservation shape features and species richness
 
@@ -1485,7 +1463,6 @@ summary(Rich_reserv_dcad)
 
 ```
 
-
 # multi-species occupancy modelling
 
 ```{r,echo = FALSE,eval=F}
@@ -1493,9 +1470,37 @@ vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
 
 landvegcomm<-cbind(vegecomm,landcomm)
 
+
+observers<-CMP_bbs_pcap_join_pcaponly[,c(9,11)]
+
+observers<-observers %>%                             
+  mutate(observer = replace(observer, observer == "Tim krynak", "Tim Krynak")) %>%  
+  mutate(observer = replace(observer, observer == "krynak", "Tim Krynak")) %>%
+  mutate(observer = replace(observer, observer == "Krynak", "Tim Krynak")) %>%
+  mutate(observer = replace(observer, observer == "Rem", "Rem Moll")) %>%
+  mutate(observer = replace(observer, observer == "Matt and Erik", "Matt Kneitel")) %>%
+  mutate(observer = replace(observer, observer == "Jen Brunfield", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "JB", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Jb", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Brumfield", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Erik Shaffer,", "Erik Shaffer")) %>%
+  mutate(observer = replace(observer, observer == "Chasar", "Dwight Chasar")) %>%
+  mutate(observer = replace(observer, observer == "Slaby", "Brian Slaby")) %>%
+  mutate(observer = replace(observer, observer == "Kneitel", "Matt Kneitel")) %>%
+  mutate(observer = replace(observer, observer == "Patti", "Patti Donnellan")) %>%
+  mutate(observer = replace(observer, observer == "Howell", "Nancy Howell")) %>%
+  mutate(observer = replace(observer, observer == "Erik Shaffer Matt K", "Erik Shaffer")) 
+
+unique(factor(observers$observer))
+
+
+
 class(CMP_bbs_pcap_join_pcaponly$simp_plot)<-"character"
 
 CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly,landcomm,by="simp_plot")
+
+CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly_landcomm,observers,by="simp_plot")
+
 
 times<-hm(CMP_bbs_pcap_join_pcaponly_landcomm$time_start)
 time_minutes<-hour(times)*60 + minute(times)
@@ -1792,22 +1797,107 @@ eighthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck %>%
 
 bbs_occobject<-list()
 
-bbs_occobject$y<-array(dim=c(103,164,3))
+bbs_occobject$y<-array(dim=c(103,164,8))
 
 bbs_occobject$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_birds),
-                           as.matrix(thirdcheck_birds)), dim=c(103,164,3))
+                           as.matrix(thirdcheck_birds),as.matrix(fourthcheck_birds),
+                           as.matrix(fifthcheck_birds),as.matrix(sixthcheck_birds),
+                           as.matrix(seventhcheck_birds),as.matrix(eighthcheck_birds)), dim=c(103,164,8))
 
-bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:4])
+bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:9])
 
-seasons<-round(sitechecks_surveyhistory[,2:4]/365)+1
+seasons<-round(sitechecks_surveyhistory[,2:9]/365)+1
 
 dayyear<-bbs_occobject$det.covs$day-((seasons-1)*365)
 
-bbs_occobject$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:4])
+bbs_occobject$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:9])
 
 bbs_occobject$det.covs$seasons<-as.matrix(seasons)
 
 bbs_occobject$det.covs$dayyear<-as.matrix(dayyear)
+
+CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly_landcomm,observers,by="simp_plot")
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_observer<-CMP_bbs_pcap_join_pcaponly_landcomm %>% 
+  group_by(simp_plot, date, species_4_,observer.y) %>%
+  summarise(n=n(),vibifq=mean(vibi_fq),time_minutes=mean(time_minutes),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
+            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
+            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
+            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
+            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
+            sens_rel=mean(sensitive_rel_cov_metric_value),
+            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
+            tol_rel=mean(tolerant_rel_cov_metric_value),
+            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
+            inv=mean(invasive_graminoids_metric_value),
+            small_tree=mean(small_tree_metric_value),
+            subcanopy=mean(subcanopy_iv),
+            canopy=mean(canopy_iv.1),
+            developed=mean(developed),
+            activity.area=mean(activity.area),
+            closest.developed=mean(closest.developed),
+            sanctioned.trail=mean(sanctioned.trail),
+            bootleg.trail=mean(bootleg.trail),
+            closest.trail=mean(closest.trail),
+            developed.edge=mean(developed.edge),
+            stream.edge=mean(stream.edge),
+            total.edges=mean(total.edges),
+            fragment.area=mean(fragment.area),
+            fragment.perimeter=mean(fragment.perimeter),
+            ldi.index.score=mean(ldi.index.score)
+  ) %>%
+  spread(species_4_,n) %>%
+  replace(is.na(.),0)
+
+
+sitechecks_observed<-CMP_bbs_pcap_join_pcaponly_detecthistory_observer[,c(1:3)]
+
+sitechecks_observed$date<- as.Date(sitechecks_observed$date , format = "%m/%d/%Y")
+
+sitechecks_observed$datecount<-as.numeric(sitechecks_observed$date-min(sitechecks$date)+1)
+
+sitechecks_observed$observercat<-as.numeric(factor(sitechecks_observed$observer.y))
+
+observerkey<-data.frame(sitechecks_observed$observer.y,as.numeric(factor(sitechecks_observed$observer.y))
+
+
+sitechecks_observed_surveyhistory<-sitechecks_observed %>%
+  group_by(simp_plot) %>% 
+  mutate(check=as.character(dense_rank(date))) %>%
+  arrange(simp_plot) %>%
+  spread(check,observer.y) %>%
+  summarise(`1`=paste(unique(unlist(strsplit(paste(na.omit(`1`), collapse="; "),";"))),collapse="; "),
+            `2`=paste(unique(unlist(strsplit(paste(na.omit(`2`), collapse="; "),";"))),collapse="; "),
+            `3`=paste(unique(unlist(strsplit(paste(na.omit(`3`), collapse="; "),";"))),collapse="; "),
+            `4`=paste(unique(unlist(strsplit(paste(na.omit(`4`), collapse="; "),";"))),collapse="; "),
+            `5`=paste(unique(unlist(strsplit(paste(na.omit(`5`), collapse="; "),";"))),collapse="; "),
+            `6`=paste(unique(unlist(strsplit(paste(na.omit(`6`), collapse="; "),";"))),collapse="; "),
+            `7`=paste(unique(unlist(strsplit(paste(na.omit(`7`), collapse="; "),";"))),collapse="; "),
+            `8`=paste(unique(unlist(strsplit(paste(na.omit(`8`), collapse="; "),";"))),collapse="; ")) %>%
+  replace(.=="",NA)
+
+
+observer<-sitechecks_observed_surveyhistory[,2:9]
+
+observer$`1`<-as.numeric(factor(observer$`1`))
+
+observer$`2`<-as.numeric(factor(observer$`2`))
+
+observer$`3`<-as.numeric(factor(observer$`3`))
+
+observer$`4`<-as.numeric(factor(observer$`4`))
+
+observer$`5`<-as.numeric(factor(observer$`5`))
+
+observer$`6`<-as.numeric(factor(observer$`6`))
+
+observer$`7`<-as.numeric(factor(observer$`7`))
+
+observer$`8`<-as.numeric(factor(observer$`8`))
+
+
+bbs_occobject$det.covs$observer<-as.matrix(observer)
+
 
 occcov<-landvegcomm[,-(1:3)]
 
@@ -1824,13 +1914,35 @@ bbs_occobject$coords<-as.matrix(landvegcomm[,2:3])
 
 ```
 
+## making simpler dataset
+
+```{r}
+bbs_occobject_three<-list()
+
+bbs_occobject_three$y<-array(dim=c(103,164,3))
+
+bbs_occobject_three$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_birds),
+                           as.matrix(thirdcheck_birds)), dim=c(103,164,3))
+
+bbs_occobject_three$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:4])
+
+seasons<-round(sitechecks_surveyhistory[,2:4]/365)+1
+
+dayyear<-bbs_occobject_three$det.covs$day-((seasons-1)*365)
+
+bbs_occobject_three$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:4])
+
+bbs_occobject_three$det.covs$seasons<-as.matrix(seasons)
+
+bbs_occobject_three$det.covs$dayyear<-as.matrix(dayyear)
+```
+
+
 ## MSOM - running different models
 
-### basic null model 
+### setting some basic parameters for the runs
 
-```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_null.det.formula <- ~ 1
+```{r}
 N <- dim(bbs_occobject$y)[1]
 ms.inits <- list(alpha.comm = 0, 
                  beta.comm = 0, 
@@ -1843,265 +1955,366 @@ ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
                   alpha.comm.normal = list(mean = 0, var = 2.72), 
                   tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
                   tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.null <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_null.det.formula, 
+n.samples<-30000
+n.omp.threads<-1
+n.report<-6000
+n.burn<-10000
+n.thin<-50
+n.chains<-3
+```
+
+### setting up our model statements
+
+```{r}
+occ_null <- ~1
+det_null <- ~1
+det_null_randobs<- (1|observer)
+det_day <- ~ scale(day) 
+det_day_randobs <- ~ scale(day) + (1|observer)
+det_daytod<- ~ scale(day)+scale(tod)
+det_daytod_randobs <- ~ scale(day)+scale(tod)+ (1|observer)
+det_daytodquad <- ~ scale(day)+scale(tod) +I(scale(day)^2)
+det_daytodquad_randobs <- ~ scale(day)+scale(tod) +I(scale(day)^2) + (1|observer)
+det_season <- ~ scale(seasons)
+det_season_randobs <- ~ scale(seasons) + (1|observer)
+det_dayyearseason <- ~ scale(dayyear) + scale(seasons) 
+det_dayyearseason_randobs <- ~ scale(dayyear) + scale(seasons) + (1|observer)
+det_dayyeartodseason <- ~ scale(dayyear)+scale(tod)+scale(seasons)
+det_dayyeartodseason_randobs <- ~ scale(dayyear)+scale(tod)+scale(seasons) + (1|observer)
+
+
+
+
+
+```
+
+### basic null model
+
+```{r, eval = FALSE}
+
+out.ms.null <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_null, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.null)
-ppc.ms.null.out <- ppcOcc(out.ms.null, 'chi-squared', group = 1)
-summary(ppc.ms.null.out)
+ppc.out.ms.null <- ppcOcc(out.ms.null, 'chi-squared', group = 1)
+summary(ppc.out.ms.null)
 
-waicOcc(out.ms.null)
+```
+
+### basic null model - with random effect
+
+```{r, eval = FALSE}
+out.ms.nullobs <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_null_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.nullobs)
+ppc.out.ms.nullobs <- ppcOcc(out.ms.nullobs, 'chi-squared', group = 1)
+summary(ppc.out.ms.nullobs)
+
+```
+
+### building up complexity of detection model - just day for now
+
+```{r, eval = FALSE}
+out.ms.det.day <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_day, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+
+
+summary(out.ms.det.day)
+ppc.out.ms.det.day <- ppcOcc(out.ms.det.day, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.day)
+
 
 ```
 
 
-### building up complexity of detection model
+### day and random effect
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_day.det.formula <- ~ scale(day)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.day <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_day.det.formula, 
+out.ms.detobs.day <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_day_randobs, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 
 
-summary(out.ms.detect.day)
-ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.day, 'chi-squared', group = 1)
-summary(out.ms.detect.day)
-
-waicOcc(out.ms.detect.day)
+summary(out.ms.detobs.day)
+ppc.out.ms.detobs.day <- ppcOcc(out.ms.detobs.day, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.day)
 
 ```
 
 ### day and time-of-day
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_daytod.det.formula <- ~ scale(day)+scale(tod)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.daytod <- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_daytod.det.formula, 
+out.ms.det.daytod <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_daytod, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.daytod)
+ppc.out.ms.det.daytod <- ppcOcc(out.ms.det.daytod, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.daytod)
+```
 
+### day and time-of-day - random observer
 
-summary(out.ms.detect.daytod)
-ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.daytod, 'chi-squared', group = 1)
-summary(out.ms.detect.daytod)
+```{r, eval = FALSE}
+out.ms.detobs.daytod <- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_daytod_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.daytod)
+ppc.out.ms.detobs.daytod <- ppcOcc(out.ms.detobs.daytod, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.daytod)
 
-waicOcc(out.ms.detect.daytod)
 
 ```
 
 ### day, tod, quadratic day
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_daytodquad.det.formula <- ~ scale(day)+scale(tod) +I(scale(day)^2)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.daytodquad<- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_daytodquad.det.formula, 
+out.ms.det.daytodquad<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_daytodquad, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
-summary(out.ms.detect.daytodquad)
-ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.daytodquad, 'chi-squared', group = 1)
-summary(out.ms.detect.daytodquad)
-
-waicOcc(out.ms.detect.daytodquad)
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.daytodquad)
+ppc.out.ms.det.daytodquad <- ppcOcc(out.ms.det.daytodquad, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.daytodquad)
 ```
+
+### day, tod, quadratic day - random observer
+
+```{r, eval = FALSE}
+out.ms.detobs.daytodquad<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_daytodquad_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.daytodquad)
+ppc.out.ms.detobs.daytodquad <- ppcOcc(out.ms.detobs.daytodquad, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.daytodquad)
+```
+
+
+### season alone
+
+```{r, eval = FALSE}
+out.ms.det.season<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_season, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.season)
+ppc.out.ms.det.season <- ppcOcc(out.ms.det.season, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.season)
+```
+
+### season alone - random observer
+
+```{r, eval = FALSE}
+out.ms.detobs.season<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_season_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.season)
+ppc.out.ms.detobs.season <- ppcOcc(out.ms.detobs.season, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.season)
+```
+
+### day of year and season
+
+```{r, eval = FALSE}
+out.ms.det.dayyearseason<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyearseason, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.dayyearseason)
+ppc.out.ms.det.dayyearseason <- ppcOcc(out.ms.det.dayyearseason, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.dayyearseason)
+```
+
+### day of year and season - random observer
+
+```{r, eval = FALSE}
+out.ms.detobs.dayyearseason<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyearseason_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.dayyearseason)
+ppc.out.ms.detobs.dayyearseason <- ppcOcc(out.ms.detobs.dayyearseason, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.dayyearseason)
+```
+
 
 ### day in year, tod, season
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_daytodseason.det.formula <- ~ scale(dayyear)+scale(tod)+scale(seasons)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.daytodseason<- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_daytodseason.det.formula, 
+out.ms.det.dayyeartodseason<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyeartodseason, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
-summary(out.ms.detect.daytodseason)
-ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.daytodseason, 'chi-squared', group = 1)
-summary(out.ms.detect.daytodseason)
-
-waicOcc(out.ms.detect.daytodseason)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.dayyeartodseason)
+ppc.out.ms.det.dayyeartodseason <- ppcOcc(out.ms.det.dayyeartodseason, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.dayyeartodseason)
 
 ```
 
-
-### season alone
+### day in year, tod, season - random observer
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_dayseason.det.formula <- ~ scale(dayyear) + scale(seasons)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.dayseason<- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_dayseason.det.formula, 
+out.ms.detobs.dayyeartodseason<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyeartodseason_randobs, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 2, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
-summary(out.ms.detect.dayseason)
-ppc.ms.detect.dayseason.out <- ppcOcc(out.ms.detect.dayseason, 'chi-squared', group = 1)
-summary(ppc.ms.detect.dayseason.out)
-
-waicOcc(out.ms.detect.dayseason)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.dayyeartodseason)
+ppc.out.ms.detobs.dayyeartodseason <- ppcOcc(out.ms.detobs.dayyeartodseason, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.dayyeartodseason)
 
 ```
 
-### season alone
+### selecting fixed effects detection model
 
 ```{r, eval = FALSE}
-bbs_occobject_null.occ.formula <- ~1
-bbs_occobject_season.det.formula <- ~ scale(seasons)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.detect.season<- msPGOcc(occ.formula = bbs_occobject_null.occ.formula, 
-                  det.formula = bbs_occobject_season.det.formula, 
-                  data = bbs_occobject, 
-                  inits = ms.inits, 
-                  n.samples = 30000, 
-                  priors = ms.priors, 
-                  n.omp.threads = 1, 
-                  verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+waicOcc(out.ms.null)
+waicOcc(out.ms.det.day)
+waicOcc(out.ms.det.daytod)
+waicOcc(out.ms.det.daytodquad)
+waicOcc(out.ms.det.season)
+waicOcc(out.ms.det.dayyearseason)
+waicOcc(out.ms.det.dayyeartodseason)
+```
 
+### selecting random effect detection model
 
-summary(out.ms.detect.season)
-ppc.ms.detect.day.out <- ppcOcc(out.ms.detect.season, 'chi-squared', group = 1)
-summary(out.ms.detect.season)
+```{r, eval = FALSE}
 
-waicOcc(out.ms.detect.season)
+waicOcc(out.ms.nullobs)
+waicOcc(out.ms.detobs.day)
+waicOcc(out.ms.detobs.daytod)
+waicOcc(out.ms.detobs.daytodquad)
+waicOcc(out.ms.detobs.season)
+waicOcc(out.ms.detobs.dayyearseason)
+waicOcc(out.ms.detobs.dayyeartodseason)
 
 ```
 
-The best-supported model is season and day-in-year. Thus, we will proceed with that one for now. 
+
+
+
+The best-supported model is season and day-in-year. Thus, we will proceed with that one for now.
 
 Now we will run several different occupancy submodels, once again evaluating fit for progressively more complicated models.
 
@@ -2239,10 +2452,7 @@ waicOcc(out.ms.fqi)
 
 ```
 
-
-
-
-### occupancy model with all rda-supported covariates 
+### occupancy model with all rda-supported covariates
 
 ```{r, eval = FALSE}
 bbs_occobject_fullrda.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)
@@ -2280,7 +2490,7 @@ waicOcc(out.ms.fullrda)
 
 ```
 
-### occupancy model with all rda-supported covariates 
+### occupancy model with all rda-supported covariates
 
 ```{r, eval = FALSE}
 bbs_occobject_fulllandveg.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) +scale(ldi.index.score)+scale(developed)+scale(developed.edge)
@@ -2394,7 +2604,6 @@ waicOcc(out.ms.tolerance)
 
 ```
 
-
 ### global model
 
 ```{r, eval = FALSE}
@@ -2471,7 +2680,6 @@ waicOcc(out.ms.global)
 
 ```
 
-
 ### global model - all non-correlated covariates (after removing some redundancy) and adding in landscape metrics
 
 ```{r, eval = FALSE}
@@ -2510,11 +2718,9 @@ waicOcc(out.ms.land)
 
 ```
 
-
-
 ### model selection
 
-we can also print out a table of Widely Applicable Information Criterion (wAIC) values. The lower this is, the better the model fit. 
+we can also print out a table of Widely Applicable Information Criterion (wAIC) values. The lower this is, the better the model fit.
 
 ```{r, eval = FALSE,out.width="200%"}
 AICc_table<-tibble(.rows = 10)
@@ -2533,14 +2739,13 @@ AICc_table<-read.csv("wAIC_table_revise.csv")
 AICc_table[order(AICc_table$wAIC),]
 ```
 
-
 So, the top model is the global, followed by the stepwise-selected rda model.
 
 Now, we plot based on this top model.
 
 ### plotting using an RShiny app
 
-While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: https://testudinidude.shinyapps.io/bbsapp/. 
+While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: <https://testudinidude.shinyapps.io/bbsapp/>.
 
 ```{r, echo = FALSE, eval = FALSE}
 fitted.ms.fulllandveg<-fitted(out.ms.fulllandveg)
@@ -2679,7 +2884,7 @@ knitr::include_app("https://testudinidude.shinyapps.io/bbsapp/")
 
 ### covariate plotting
 
-Finally, we can also run some plots depicting covariate effects for each species. These should make it clear if and when species appear to be particularly related to certain vegetative characteristics - and thus may serve as "indicators" for these characteristics. 
+Finally, we can also run some plots depicting covariate effects for each species. These should make it clear if and when species appear to be particularly related to certain vegetative characteristics - and thus may serve as "indicators" for these characteristics.
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
 #options(max.print=1000000)
@@ -2775,7 +2980,6 @@ ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorba
 
 
 ```
-
 
 ### covariates by migratory status
 
