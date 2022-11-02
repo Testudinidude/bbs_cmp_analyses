@@ -5,7 +5,7 @@ account: testudinidude
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 6311143
-bundleId: 6046678
+bundleId: 6448470
 url: https://testudinidude.shinyapps.io/bbsapp/
-when: 1656339187.25536
-lastSyncTime: 1656339187.25536
+when: 1666902362.35884
+lastSyncTime: 1666902362.35884

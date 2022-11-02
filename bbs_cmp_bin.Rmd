@@ -87,7 +87,7 @@ CMP_bbs_pcap_join_pcaponly<-CMP_bbs_pcap_join[!is.na(CMP_bbs_pcap_join$Plot.ID),
 datetime<-strptime(CMP_bbs_pcap_join_pcaponly$survey_cre,format="%m/%d/%Y %H:%M")
 hist(datetime,breaks="months")
 
-pcap_1styear_landscape<-read.csv("G:/NaturalResources/Byer/datasets/BBS/pcap_4yr_landscape_variables_202204281228.csv",header=T)
+pcap_1styear_landscape<-read.csv("G:/NaturalResources/Byer/datasets/BBS/pcap_4yr_landscape_variables_revLDI.csv",header=T)
 
 
 ```
@@ -121,10 +121,6 @@ CMP_bbs_pcap_join_pcaponly_pcapsum_landscape<-left_join(x = CMP_bbs_pcap_join_pc
 
 CMP_bbs_pcap_join_pcaponly_pcapsum<-column_to_rownames(CMP_bbs_pcap_join_pcaponly_pcapsum_landscape,var="simp_plot")
 
-
-
-
-
 ```
 
 This is a pretty unwieldly dataset at present - we have 164 rows (representing our BBS/PCAP plots) and 131 columns. Out of those 131 columns, 103 are unique species (designated with four-letter codes), so most of the first 27 covariates are essentially our "predictors" - in this case, our PCAP data.
@@ -149,9 +145,10 @@ vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,5:26]
 Finally, we will separate out the 1st year landscape covariates. As a quick note, these will not be *strictly* comparable with the 2nd survey landscape covariates, but should be pretty close (\~5 years is likely not enough for substantial land cover change).
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
-landcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,142:153]
+landcomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,c(142:152,156,157)]
 
 landcomm[is.na(landcomm)] <- 0
+
 
 ```
 
@@ -170,6 +167,9 @@ vegecomm_drop<-vegecomm[,-corvar]
 We can also check for correlations between the landscape covariates.
 
 ```{r,warning=FALSE,error=FALSE,message=FALSE}
+cols<-seq(1,13,1)
+
+landcomm[,cols] = apply(landcomm[,cols], 2, function(x) as.numeric(as.character(x)))
 
 landcomm_cor<-cor(landcomm)
 
@@ -178,9 +178,6 @@ corvar_land<-findCorrelation(landcomm_cor,cutoff=0.6)
 
 landcomm_drop<-landcomm[,-corvar_land]
 
-#also dropping developed edge
-
-landcomm_drop<-landcomm_drop[,-5]
 ```
 
 We can then check correlations between PCAP and landscape covariates.
@@ -1025,7 +1022,7 @@ pcap_landveggeog<-varpart(birdcomm_bin,~ vibifq+vibifqnotrees+carex+cyper+dicot+
                      shade+shrub+hydro+svp+ap+fqi+bryo+hydro_rel+hydro_rel_notrees+sens_rel+
                      sens_rel_notree+tol_rel+tol_rel_notree+inv+small_tree+subcanopy,~developed+activity.area+
                      closest.developed+sanctioned.trail+bootleg.trail+closest.trail+developed.edge+stream.edge+
-                     total.edges+fragment.area+fragment.perimeter+ldi.index.score,~longitude+latitude,data=landvegcomm_latlong)
+                     total.edges+fragment.area+fragment.perimeter+ldi_3k,~longitude+latitude,data=landvegcomm_latlong)
 plot(pcap_landveggeog)
 ```
 
@@ -1217,7 +1214,7 @@ summary(Rich_fragment.area)
 Rich_fragment.perimeter<-lmer(S_plotdate~fragment.perimeter+(1|simp_plot),landcomm_bycount)
 summary(Rich_fragment.perimeter)
 
-Rich_ldi.index.score<-lmer(S_plotdate~ldi.index.score+(1|simp_plot),landcomm_bycount)
+Rich_ldi.index.score<-lmer(S_plotdate~ldi_3k+(1|simp_plot),landcomm_bycount)
 summary(Rich_ldi.index.score)
 
 Rich_null<-lmer(S_plotdate~1+(1|simp_plot),vegecomm_bycount)
@@ -1465,83 +1462,46 @@ summary(Rich_reserv_dcad)
 
 # multi-species occupancy modelling
 
-```{r,echo = FALSE,eval=F}
+
+
+
+```{r,echo = FALSE, eval = FALSE}
 vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
 
 landvegcomm<-cbind(vegecomm,landcomm)
 
-
-observers<-CMP_bbs_pcap_join_pcaponly[,c(9,11)]
-
-observers<-observers %>%                             
-  mutate(observer = replace(observer, observer == "Tim krynak", "Tim Krynak")) %>%  
-  mutate(observer = replace(observer, observer == "krynak", "Tim Krynak")) %>%
-  mutate(observer = replace(observer, observer == "Krynak", "Tim Krynak")) %>%
-  mutate(observer = replace(observer, observer == "Rem", "Rem Moll")) %>%
-  mutate(observer = replace(observer, observer == "Matt and Erik", "Matt Kneitel")) %>%
-  mutate(observer = replace(observer, observer == "Jen Brunfield", "Jen Brumfield")) %>%
-  mutate(observer = replace(observer, observer == "JB", "Jen Brumfield")) %>%
-  mutate(observer = replace(observer, observer == "Jb", "Jen Brumfield")) %>%
-  mutate(observer = replace(observer, observer == "Brumfield", "Jen Brumfield")) %>%
-  mutate(observer = replace(observer, observer == "Erik Shaffer,", "Erik Shaffer")) %>%
-  mutate(observer = replace(observer, observer == "Chasar", "Dwight Chasar")) %>%
-  mutate(observer = replace(observer, observer == "Slaby", "Brian Slaby")) %>%
-  mutate(observer = replace(observer, observer == "Kneitel", "Matt Kneitel")) %>%
-  mutate(observer = replace(observer, observer == "Patti", "Patti Donnellan")) %>%
-  mutate(observer = replace(observer, observer == "Howell", "Nancy Howell")) %>%
-  mutate(observer = replace(observer, observer == "Erik Shaffer Matt K", "Erik Shaffer")) 
-
-unique(factor(observers$observer))
-
-
-
 class(CMP_bbs_pcap_join_pcaponly$simp_plot)<-"character"
+
+landcomm$simp_plot<-rownames(landcomm)
 
 CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly,landcomm,by="simp_plot")
 
-CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly_landcomm,observers,by="simp_plot")
-
+CMP_bbs_pcap_join_pcaponly_landcomm$simp_plot<-as.factor(CMP_bbs_pcap_join_pcaponly_landcomm$simp_plot)
 
 times<-hm(CMP_bbs_pcap_join_pcaponly_landcomm$time_start)
 time_minutes<-hour(times)*60 + minute(times)
 CMP_bbs_pcap_join_pcaponly_landcomm$time_minutes<-time_minutes
-CMP_bbs_pcap_join_pcaponly_detecthistory<-CMP_bbs_pcap_join_pcaponly_landcomm %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_species<-CMP_bbs_pcap_join_pcaponly_landcomm %>% 
   group_by(simp_plot, date, species_4_) %>%
-  summarise(n=n(),vibifq=mean(vibi_fq),time_minutes=mean(time_minutes),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
-            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
-            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
-            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
-            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
-            sens_rel=mean(sensitive_rel_cov_metric_value),
-            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
-            tol_rel=mean(tolerant_rel_cov_metric_value),
-            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
-            inv=mean(invasive_graminoids_metric_value),
-            small_tree=mean(small_tree_metric_value),
-            subcanopy=mean(subcanopy_iv),
-            canopy=mean(canopy_iv.1),
-            developed=mean(developed),
-            activity.area=mean(activity.area),
-            closest.developed=mean(closest.developed),
-            sanctioned.trail=mean(sanctioned.trail),
-            bootleg.trail=mean(bootleg.trail),
-            closest.trail=mean(closest.trail),
-            developed.edge=mean(developed.edge),
-            stream.edge=mean(stream.edge),
-            total.edges=mean(total.edges),
-            fragment.area=mean(fragment.area),
-            fragment.perimeter=mean(fragment.perimeter),
-            ldi.index.score=mean(ldi.index.score)
-  ) %>%
+  summarise(n=n(),time_minutes=mean(time_minutes)) %>%
   spread(species_4_,n) %>%
-  replace(is.na(.),0)
+  replace(is.na(.),0) 
 
+CMP_bbs_pcap_join_pcaponly_detecthistory_species_bin<-CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% 
+  ungroup() %>%
+  dplyr::select(ACFL:YTWA) 
 
-sitechecks<-CMP_bbs_pcap_join_pcaponly_detecthistory[,1:2]
+CMP_bbs_pcap_join_pcaponly_detecthistory_species_bin[CMP_bbs_pcap_join_pcaponly_detecthistory_species_bin > 0] <- 1   
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_species[,5:107]<-CMP_bbs_pcap_join_pcaponly_detecthistory_species_bin[,1:103]
+
+sitechecks<-CMP_bbs_pcap_join_pcaponly_detecthistory_species[,1:2]
 
 sitechecks$date<- as.Date(sitechecks$date , format = "%m/%d/%Y")
 
 sitechecks$datecount<-as.numeric(sitechecks$date-min(sitechecks$date)+1)
+
+
 
 
 sitechecks_surveyhistory<-sitechecks %>%
@@ -1558,7 +1518,7 @@ sitechecks_surveyhistory<-sitechecks %>%
             `7`=mean(`7`,na.rm=T),
             `8`=mean(`8`,na.rm=T))
 
-sitetimes<-CMP_bbs_pcap_join_pcaponly_detecthistory[,c(1,2,4)]
+sitetimes<-CMP_bbs_pcap_join_pcaponly_detecthistory_species[,c(1:3)]
 
 sitetimes_surveyhistory<-sitetimes %>%
   group_by(simp_plot) %>% 
@@ -1574,7 +1534,7 @@ sitetimes_surveyhistory<-sitetimes %>%
             `7`=mean(`7`,na.rm=T),
             `8`=mean(`8`,na.rm=T))
 
-CMP_bbs_pcap_join_pcaponly_detecthistory$datecount<-sitechecks$datecount
+CMP_bbs_pcap_join_pcaponly_detecthistory_species$datecount<-sitechecks$datecount
 
 
 sitetimes_surveyhistory_forindexing<-sitetimes %>%
@@ -1584,13 +1544,10 @@ sitetimes_surveyhistory_forindexing<-sitetimes %>%
   spread(check,time_minutes)
 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<-CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[1]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1601,7 +1558,8 @@ CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<- CMP_bbs_pcap_join_pcaponly
                   RBWO, REVI, RHWO, ROPI, RSHA, RTHA, RTHU, RWBL, SAVS, SCTA, 
                   SOSP, SWSP, TRES, TUTI, TUVU, VEER, VIRA, WAVI, WBNU, 
                   WEVI, WIFL, WITU, WIWR, WODU, WOTH, YBCU, YEWA, YTVI, YTWA, 
-                  datecount))
+                  datecount)) 
+  
 
 firstcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck %>%
   dplyr::select(ACFL:YTWA) %>%
@@ -1610,13 +1568,10 @@ firstcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck %>%
   pivot_wider(names_from=rowname) %>%
   column_to_rownames(var = "name")
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck<-CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[2]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1637,13 +1592,10 @@ secondcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck %>%
   column_to_rownames(var = "name") 
 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[3]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1663,13 +1615,10 @@ thirdcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck %>%
   pivot_wider(names_from=rowname) %>%
   column_to_rownames(var = "name") 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[4]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1689,13 +1638,10 @@ fourthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck %>%
   pivot_wider(names_from=rowname) %>%
   column_to_rownames(var = "name")
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[5]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1715,13 +1661,10 @@ fifthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck %>%
   pivot_wider(names_from=rowname) %>%
   column_to_rownames(var = "name") 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[6]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1742,13 +1685,10 @@ sixthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck %>%
   column_to_rownames(var = "name") 
 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[7]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1769,13 +1709,10 @@ seventhcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck %>%
   column_to_rownames(var = "name") 
 
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory %>% group_by(simp_plot) %>% 
+CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
   summarise_all(funs(list(.[8]))) %>% 
-  unnest(cols = c(date, vibifq, time_minutes, vibifqnotrees, carex, cyper, dicot, 
-                  shade, shrub, hydro, svp, ap, fqi, bryo, hydro_rel, hydro_rel_notrees, 
-                  sens_rel, sens_rel_notree, tol_rel, tol_rel_notree, inv, 
-                  small_tree, subcanopy, canopy, V1, ACFL, ALFL, AMCR, AMGO, 
+  unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
                   BWWA, CANG, CARW, CEDW, CERW, CHSP, CHSW, CLSW, COGR, COHA, 
@@ -1804,6 +1741,25 @@ bbs_occobject$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_bir
                            as.matrix(fifthcheck_birds),as.matrix(sixthcheck_birds),
                            as.matrix(seventhcheck_birds),as.matrix(eighthcheck_birds)), dim=c(103,164,8))
 
+roaddist<-data.frame(CMP_bbs_pcap_join_pcaponly_landcomm$dist_road)
+
+roaddist$simp_plot<-factor(CMP_bbs_pcap_join_pcaponly_landcomm$simp_plot)
+
+sitechecks_road<-data.frame(sitechecks_surveyhistory$simp_plot,1)
+
+colnames(sitechecks_road)<-c("simp_plot","dummy")
+
+sitechecks_road_2<-merge(sitechecks_road,roaddist,by="simp_plot")
+
+colnames(sitechecks_road_2)<-c("simp_plot","dummy","dist_road")
+
+sitechecks_road_2<-sitechecks_road_2[!duplicated(sitechecks_road_2), ]
+
+
+sitechecks_road_detcov<-as.matrix(cbind(sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road))
+
+sitechecks_surveyhistory$simp_plot
+
 bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:9])
 
 seasons<-round(sitechecks_surveyhistory[,2:9]/365)+1
@@ -1816,38 +1772,43 @@ bbs_occobject$det.covs$seasons<-as.matrix(seasons)
 
 bbs_occobject$det.covs$dayyear<-as.matrix(dayyear)
 
-CMP_bbs_pcap_join_pcaponly_landcomm<-left_join(CMP_bbs_pcap_join_pcaponly_landcomm,observers,by="simp_plot")
+bbs_occobject$det.covs$dist_road<-as.matrix(sitechecks_road_detcov)
 
-CMP_bbs_pcap_join_pcaponly_detecthistory_observer<-CMP_bbs_pcap_join_pcaponly_landcomm %>% 
+
+observers<-CMP_bbs_pcap_join_pcaponly[,c(9,11)]
+
+
+observers<-observers %>%                             
+  mutate(observer = replace(observer, observer == "Tim krynak", "Tim Krynak")) %>%  
+  mutate(observer = replace(observer, observer == "krynak", "Tim Krynak")) %>%
+  mutate(observer = replace(observer, observer == "Krynak", "Tim Krynak")) %>%
+  mutate(observer = replace(observer, observer == "Rem", "Rem Moll")) %>%
+  mutate(observer = replace(observer, observer == "Matt and Erik", "Matt Kneitel")) %>%
+  mutate(observer = replace(observer, observer == "Jen Brunfield", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "JB", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Jb", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Brumfield", "Jen Brumfield")) %>%
+  mutate(observer = replace(observer, observer == "Erik Shaffer,", "Erik Shaffer")) %>%
+  mutate(observer = replace(observer, observer == "Chasar", "Dwight Chasar")) %>%
+  mutate(observer = replace(observer, observer == "Slaby", "Brian Slaby")) %>%
+  mutate(observer = replace(observer, observer == "Kneitel", "Matt Kneitel")) %>%
+  mutate(observer = replace(observer, observer == "Patti", "Patti Donnellan")) %>%
+  mutate(observer = replace(observer, observer == "Howell", "Nancy Howell")) %>%
+  mutate(observer = replace(observer, observer == "Erik Shaffer Matt K", "Erik Shaffer")) 
+
+unique(factor(observers$observer))
+
+observers$simp_plot<-as.factor(observers$simp_plot)
+
+CMP_bbs_pcap_join_pcaponly_landcomm_observers<-left_join(CMP_bbs_pcap_join_pcaponly_landcomm,observers,by="simp_plot")
+
+CMP_bbs_pcap_join_pcaponly_detecthistory_observer<-CMP_bbs_pcap_join_pcaponly_landcomm_observers %>%
   group_by(simp_plot, date, species_4_,observer.y) %>%
-  summarise(n=n(),vibifq=mean(vibi_fq),time_minutes=mean(time_minutes),vibifqnotrees=mean(vibi_fq_no_trees),carex=mean(carex_metric_value),cyper=mean(cyperaceae_metric_value),
-            dicot=mean(dicot_metric_value),shade=mean(shade_metric_value),shrub=mean(shrub_metric_value),
-            hydro=mean(hydrophyte_metric_value),svp=mean(svp_metric_value),ap=mean(ap_ratio_metric_value),
-            fqi=mean(fqai_score),bryo=mean(bryophyte_metric_value),hydro_rel=mean(hydrophyte_rel_cov_metric_value),
-            hydro_rel_notrees=mean(hydrophyte_rel_cov_no_trees),
-            sens_rel=mean(sensitive_rel_cov_metric_value),
-            sens_rel_notree=mean(sensitive_rel_cov_no_trees),
-            tol_rel=mean(tolerant_rel_cov_metric_value),
-            tol_rel_notree=mean(tolerant_rel_cov_no_trees),
-            inv=mean(invasive_graminoids_metric_value),
-            small_tree=mean(small_tree_metric_value),
-            subcanopy=mean(subcanopy_iv),
-            canopy=mean(canopy_iv.1),
-            developed=mean(developed),
-            activity.area=mean(activity.area),
-            closest.developed=mean(closest.developed),
-            sanctioned.trail=mean(sanctioned.trail),
-            bootleg.trail=mean(bootleg.trail),
-            closest.trail=mean(closest.trail),
-            developed.edge=mean(developed.edge),
-            stream.edge=mean(stream.edge),
-            total.edges=mean(total.edges),
-            fragment.area=mean(fragment.area),
-            fragment.perimeter=mean(fragment.perimeter),
-            ldi.index.score=mean(ldi.index.score)
-  ) %>%
+  summarise(n=n()) %>%
   spread(species_4_,n) %>%
   replace(is.na(.),0)
+
+
 
 
 sitechecks_observed<-CMP_bbs_pcap_join_pcaponly_detecthistory_observer[,c(1:3)]
@@ -1858,7 +1819,7 @@ sitechecks_observed$datecount<-as.numeric(sitechecks_observed$date-min(sitecheck
 
 sitechecks_observed$observercat<-as.numeric(factor(sitechecks_observed$observer.y))
 
-observerkey<-data.frame(sitechecks_observed$observer.y,as.numeric(factor(sitechecks_observed$observer.y))
+observerkey<-data.frame(sitechecks_observed$observer.y,as.numeric(factor(sitechecks_observed$observer.y)))
 
 
 sitechecks_observed_surveyhistory<-sitechecks_observed %>%
@@ -1873,8 +1834,7 @@ sitechecks_observed_surveyhistory<-sitechecks_observed %>%
             `5`=paste(unique(unlist(strsplit(paste(na.omit(`5`), collapse="; "),";"))),collapse="; "),
             `6`=paste(unique(unlist(strsplit(paste(na.omit(`6`), collapse="; "),";"))),collapse="; "),
             `7`=paste(unique(unlist(strsplit(paste(na.omit(`7`), collapse="; "),";"))),collapse="; "),
-            `8`=paste(unique(unlist(strsplit(paste(na.omit(`8`), collapse="; "),";"))),collapse="; ")) %>%
-  replace(.=="",NA)
+            `8`=paste(unique(unlist(strsplit(paste(na.omit(`8`), collapse="; "),";"))),collapse="; ")) %>% replace(.=="",NA)
 
 
 observer<-sitechecks_observed_surveyhistory[,2:9]
@@ -1898,7 +1858,6 @@ observer$`8`<-as.numeric(factor(observer$`8`))
 
 bbs_occobject$det.covs$observer<-as.matrix(observer)
 
-
 occcov<-landvegcomm[,-(1:3)]
 
 cols<-seq(1,35,1)
@@ -1911,12 +1870,14 @@ bbs_occobject$occ.covs<-as.matrix(occcov)
 
 bbs_occobject$coords<-as.matrix(landvegcomm[,2:3])
 
+summary(bbs_occobject$y[4,,])
 
 ```
 
-## making simpler dataset
 
-```{r}
+## making simpler datasets
+
+```{r, echo = FALSE, eval = F}
 bbs_occobject_three<-list()
 
 bbs_occobject_three$y<-array(dim=c(103,164,3))
@@ -1935,6 +1896,55 @@ bbs_occobject_three$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:4])
 bbs_occobject_three$det.covs$seasons<-as.matrix(seasons)
 
 bbs_occobject_three$det.covs$dayyear<-as.matrix(dayyear)
+
+
+occcov<-landvegcomm[,-(1:3)]
+
+cols<-seq(1,34,1)
+
+occcov[,cols] = apply(occcov[,cols], 2, function(x) as.numeric(as.character(x)))
+
+bbs_occobject_three$occ.covs<-as.matrix(occcov)
+
+
+
+bbs_occobject_three$coords<-as.matrix(landvegcomm[,2:3])
+
+
+bbs_occobject_six<-list()
+
+bbs_occobject_six$y<-array(dim=c(103,164,6))
+
+bbs_occobject_six$y <- array(c(as.matrix(firstcheck_birds),as.matrix(secondcheck_birds),
+                           as.matrix(thirdcheck_birds),as.matrix(fourthcheck_birds),
+                           as.matrix(fifthcheck_birds),as.matrix(sixthcheck_birds)), dim=c(103,164,6))
+
+bbs_occobject_six$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:7])
+
+seasons<-round(sitechecks_surveyhistory[,2:7]/365)+1
+
+dayyear<-bbs_occobject_six$det.covs$day-((seasons-1)*365)
+
+bbs_occobject_six$det.covs$tod<-as.matrix(sitetimes_surveyhistory[,2:7])
+
+bbs_occobject_six$det.covs$seasons<-as.matrix(seasons)
+
+bbs_occobject_six$det.covs$dayyear<-as.matrix(dayyear)
+
+
+occcov<-landvegcomm[,-(1:3)]
+
+cols<-seq(1,34,1)
+
+occcov[,cols] = apply(occcov[,cols], 2, function(x) as.numeric(as.character(x)))
+
+bbs_occobject_six$occ.covs<-as.matrix(occcov)
+
+
+
+bbs_occobject_six$coords<-as.matrix(landvegcomm[,2:3])
+
+
 ```
 
 
@@ -1942,7 +1952,7 @@ bbs_occobject_three$det.covs$dayyear<-as.matrix(dayyear)
 
 ### setting some basic parameters for the runs
 
-```{r}
+```{r, eval = FALSE}
 N <- dim(bbs_occobject$y)[1]
 ms.inits <- list(alpha.comm = 0, 
                  beta.comm = 0, 
@@ -1965,26 +1975,36 @@ n.chains<-3
 
 ### setting up our model statements
 
-```{r}
+```{r, eval = FALSE}
 occ_null <- ~1
+occ_vibifq <- ~ scale(vibifq)
+occ_vibifqnotrees <- ~ scale(vibifqnotrees)
+occ_fqi <- ~ scale(fqi)
+occ_rdaveg <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)
+occ_fullrda<- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) +scale(ldi_3k)+scale(developed)
+occ_structure <- ~ scale(canopy)+scale(subcanopy)+scale(small_tree)
+occ_tol <- ~ scale(tol_rel)
+occ_allveg <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)+scale(shrub)+scale(hydro)+scale(subcanopy)+scale(canopy)
+occ_allland <- ~ scale(developed)+scale(activity.area)+scale(sanctioned.trail)+ scale(bootleg.trail)+scale(stream.edge)+scale(ldi_3k)
+
 det_null <- ~1
-det_null_randobs<- (1|observer)
+det_null_randobs<- ~ 1 + I(1|observer)
 det_day <- ~ scale(day) 
-det_day_randobs <- ~ scale(day) + (1|observer)
+det_day_randobs <- ~ scale(day) + I(1|observer)
 det_daytod<- ~ scale(day)+scale(tod)
-det_daytod_randobs <- ~ scale(day)+scale(tod)+ (1|observer)
+det_daytod_randobs <- ~ scale(day)+scale(tod)+ I(1|observer)
 det_daytodquad <- ~ scale(day)+scale(tod) +I(scale(day)^2)
-det_daytodquad_randobs <- ~ scale(day)+scale(tod) +I(scale(day)^2) + (1|observer)
+det_daytodquad_randobs <- ~ scale(day)+scale(tod) +I(scale(day)^2) + I(1|observer)
 det_season <- ~ scale(seasons)
-det_season_randobs <- ~ scale(seasons) + (1|observer)
+det_season_randobs <- ~ scale(seasons) + I(1|observer)
 det_dayyearseason <- ~ scale(dayyear) + scale(seasons) 
-det_dayyearseason_randobs <- ~ scale(dayyear) + scale(seasons) + (1|observer)
+det_dayyearseason_randobs <- ~ scale(dayyear) + scale(seasons) + I(1|observer)
 det_dayyeartodseason <- ~ scale(dayyear)+scale(tod)+scale(seasons)
-det_dayyeartodseason_randobs <- ~ scale(dayyear)+scale(tod)+scale(seasons) + (1|observer)
-
-
-
-
+det_dayyeartodseason_randobs <- ~ scale(dayyear)+scale(tod)+scale(seasons) + I(1|observer)
+det_dayyeartodseason <- ~ scale(dayyear)+scale(tod)+scale(seasons)
+det_dayyeartodseason_randobs <- ~ scale(dayyear)+scale(tod)+scale(seasons)+ I(1|observer)
+det_dayyeartodseasonroad <- ~ scale(dayyear)+scale(tod)+scale(seasons)+scale(dist_road)
+det_dayyeartodseasonroad_randobs <- ~ scale(dayyear)+scale(tod)+scale(seasons)+scale(dist_road)+I(1|observer)
 
 ```
 
@@ -2285,6 +2305,50 @@ summary(ppc.out.ms.detobs.dayyeartodseason)
 
 ```
 
+
+### day in year, tod, season
+
+```{r, eval = FALSE}
+out.ms.det.dayyeartodseasonroad<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyeartodseasonroad, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.det.dayyeartodseasonroad)
+ppc.out.ms.det.dayyeartodseasonroad <- ppcOcc(out.ms.det.dayyeartodseasonroad, 'chi-squared', group = 1)
+summary(ppc.out.ms.det.dayyeartodseasonroad)
+
+```
+
+### day in year, tod, season - random observer
+
+```{r, eval = FALSE}
+out.ms.detobs.dayyeartodseasonroad<- msPGOcc(occ.formula = occ_null, 
+                  det.formula = det_dayyeartodseasonroad_randobs, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.detobs.dayyeartodseasonroad)
+ppc.out.ms.detobs.dayyeartodseasonroad <- ppcOcc(out.ms.detobs.dayyeartodseasonroad, 'chi-squared', group = 1)
+summary(ppc.out.ms.detobs.dayyeartodseasonroad)
+
+```
+
+
 ### selecting fixed effects detection model
 
 ```{r, eval = FALSE}
@@ -2295,6 +2359,8 @@ waicOcc(out.ms.det.daytodquad)
 waicOcc(out.ms.det.season)
 waicOcc(out.ms.det.dayyearseason)
 waicOcc(out.ms.det.dayyeartodseason)
+waicOcc(out.ms.det.dayyeartodseasonroad)
+
 ```
 
 ### selecting random effect detection model
@@ -2308,67 +2374,37 @@ waicOcc(out.ms.detobs.daytodquad)
 waicOcc(out.ms.detobs.season)
 waicOcc(out.ms.detobs.dayyearseason)
 waicOcc(out.ms.detobs.dayyeartodseason)
+waicOcc(out.ms.detobs.dayyeartodseasonroad)
+
 
 ```
 
-
-
-
-The best-supported model is season and day-in-year. Thus, we will proceed with that one for now.
+The best-supported model is day of year, time of day, season, and distance to road. Thus, we will proceed with that one for now.
 
 Now we will run several different occupancy submodels, once again evaluating fit for progressively more complicated models.
 
 ### occupancy model with vibi-fq
 
 ```{r, eval = FALSE}
-bbs_occobject_vibifq.occ.formula <- ~ scale(vibifq)
-bbs_occobject.det.best.formula <- ~ scale(dayyear) + scale(seasons)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.vibifq <- msPGOcc(occ.formula = bbs_occobject_vibifq.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+
+det_best<-det_dayyeartodseasonroad_randobs
+
+out.ms.vibifq <- msPGOcc(occ.formula = occ_vibifq, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 2, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.vibifq)
-ppc.ms.vibifq.out <- ppcOcc(out.ms.vibifq, 'chi-squared', group = 1)
-summary(ppc.ms.vibifq.out)
+ppc.out.ms.vibifq <- ppcOcc(out.ms.vibifq, 'chi-squared', group = 1)
+summary(ppc.out.ms.vibifq)
 
-
-#out.ms.bestdec.small <- msPGOcc(occ.formula = ~1, 
-#                       det.formula = bbs_occobject.det.best.formula, 
-#                       data = bbs_occobject, 
-#                       inits = ms.inits, 
-#                       n.samples = 30000, 
-#                       priors = ms.priors, 
-#                       n.omp.threads = 2, 
-#                       verbose = TRUE, 
-#                       n.report = 6000, 
-#                       n.burn = 10000,
-#                       n.thin = 50, 
-#                       n.chains = 3)
-
-
-#waicOcc(out.ms.bestdec.small)
 waicOcc(out.ms.vibifq)
 
 ```
@@ -2376,38 +2412,23 @@ waicOcc(out.ms.vibifq)
 ### occupancy model with vibi-fq-notrees
 
 ```{r, eval = FALSE}
-bbs_occobject_vibifqnotrees.occ.formula <- ~ scale(vibifqnotrees)
-bbs_occobject.det.best.formula <- ~ scale(dayyear) + scale(seasons)
-
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.vibifqnotrees <- msPGOcc(occ.formula = bbs_occobject_vibifqnotrees.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.vibifqnotrees <- msPGOcc(occ.formula = occ_vibifqnotrees, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 2, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 
 
 summary(out.ms.vibifqnotrees)
-ppc.ms.vibifqnotrees.out <- ppcOcc(out.ms.vibifqnotrees, 'chi-squared', group = 1)
-summary(ppc.ms.vibifqnotrees.out)
+ppc.out.ms.vibifqnotrees <- ppcOcc(out.ms.vibifqnotrees, 'chi-squared', group = 1)
+summary(ppc.out.ms.vibifqnotrees)
 
 waicOcc(out.ms.vibifqnotrees)
 
@@ -2416,113 +2437,72 @@ waicOcc(out.ms.vibifqnotrees)
 ### just FQAI
 
 ```{r, eval = FALSE}
-bbs_occobject_fqi.occ.formula <- ~ scale(fqi)
-bbs_occobject.det.best.formula <- ~ scale(dayyear) + scale(seasons)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.fqi <- msPGOcc(occ.formula = bbs_occobject_fqi.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.fqi <- msPGOcc(occ.formula = occ_fqi, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.fqi)
-ppc.ms.fqi.out <- ppcOcc(out.ms.fqi, 'chi-squared', group = 1)
-summary(ppc.ms.fqi.out)
+ppc.out.ms.fqi <- ppcOcc(out.ms.fqi, 'chi-squared', group = 1)
+summary(ppc.out.ms.fqi)
 
 waicOcc(out.ms.fqi)
 
 ```
 
-### occupancy model with all rda-supported covariates
+### occupancy model with all rda-supported vegetation covariates
 
 ```{r, eval = FALSE}
-bbs_occobject_fullrda.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.fullrda <- msPGOcc(occ.formula = bbs_occobject_fullrda.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+
+out.ms.rdaveg <- msPGOcc(occ.formula = occ_rdaveg, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 
 
-summary(out.ms.fullrda)
-ppc.ms.fullrda.out <- ppcOcc(out.ms.fullrda, 'chi-squared', group = 1)
-summary(ppc.ms.fullrda.out)
+summary(out.ms.rdaveg)
+ppc.out.ms.rdaveg <- ppcOcc(out.ms.rdaveg, 'chi-squared', group = 1)
+summary(ppc.out.ms.rdaveg)
 
-waicOcc(out.ms.fullrda)
+waicOcc(out.ms.rdaveg)
 
 ```
 
 ### occupancy model with all rda-supported covariates
 
 ```{r, eval = FALSE}
-bbs_occobject_fulllandveg.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) +scale(ldi.index.score)+scale(developed)+scale(developed.edge)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.fulllandveg <- msPGOcc(occ.formula = bbs_occobject_fulllandveg.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.fulllandveg <- msPGOcc(occ.formula = occ_fullrda, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 
 
 summary(out.ms.fulllandveg)
-ppc.ms.fulllandveg.out <- ppcOcc(out.ms.fulllandveg, 'chi-squared', group = 1)
-summary(ppc.ms.fulllandveg.out)
+ppc.out.ms.fulllandveg <- ppcOcc(out.ms.fulllandveg, 'chi-squared', group = 1)
+summary(ppc.out.ms.fulllandveg)
 
 waicOcc(out.ms.fulllandveg)
 
@@ -2531,189 +2511,86 @@ waicOcc(out.ms.fulllandveg)
 ### occupancy model with just canopy/woody veg-related covariates
 
 ```{r, eval = FALSE}
-bbs_occobject_structure.occ.formula <- ~ scale(canopy)+scale(subcanopy)+scale(small_tree)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.structure <- msPGOcc(occ.formula = bbs_occobject_structure.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.structure <- msPGOcc(occ.formula = occ_structure, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.structure)
-ppc.ms.structure.out <- ppcOcc(out.ms.structure, 'chi-squared', group = 1)
-summary(ppc.ms.structure.out)
-
+ppc.out.ms.structure <- ppcOcc(out.ms.structure, 'chi-squared', group = 1)
+summary(ppc.out.ms.structure)
 waicOcc(out.ms.structure)
-
 ```
 
 ### occupancy model with just tolerance/sensitivity
 
 ```{r, eval = FALSE}
-bbs_occobject_tolerance.occ.formula <- ~ scale(tol_rel)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.tolerance<- msPGOcc(occ.formula = bbs_occobject_tolerance.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.tolerance<- msPGOcc(occ.formula = occ_tol, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.tolerance)
-ppc.ms.tolerance.out <- ppcOcc(out.ms.tolerance, 'chi-squared', group = 1)
-summary(ppc.ms.tolerance.out)
-
+ppc.out.ms.tolerance <- ppcOcc(out.ms.tolerance, 'chi-squared', group = 1)
+summary(ppc.out.ms.tolerance)
 waicOcc(out.ms.tolerance)
+```
+
+### all veg covariates model
+
+```{r, eval = FALSE}
+out.ms.allveg <- msPGOcc(occ.formula = occ_allveg, 
+                  det.formula = det_best, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = n.samples, 
+                  priors = ms.priors, 
+                  n.omp.threads = n.omp.threads, 
+                  verbose = TRUE, 
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
+summary(out.ms.allveg)
+ppc.out.ms.allveg <- ppcOcc(out.ms.allveg, 'chi-squared', group = 1)
+summary(ppc.out.ms.allveg)
+
+waicOcc(out.ms.allveg)
 
 ```
 
-### global model
+### all landscape covariates
 
 ```{r, eval = FALSE}
-bbs_occobject_global.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)+scale(shrub)+scale(hydro)+scale(subcanopy)+scale(canopy)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.global <- msPGOcc(occ.formula = bbs_occobject_global.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
+out.ms.land <- msPGOcc(occ.formula = occ_allland, 
+                  det.formula = det_best, 
                   data = bbs_occobject, 
                   inits = ms.inits, 
-                  n.samples = 30000, 
+                  n.samples = n.samples, 
                   priors = ms.priors, 
-                  n.omp.threads = 1, 
+                  n.omp.threads = n.omp.threads, 
                   verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
-summary(out.ms.global)
-ppc.ms.global.out <- ppcOcc(out.ms.global, 'chi-squared', group = 1)
-summary(ppc.ms.global.out)
-
-waicOcc(out.ms.global)
-
-```
-
-### global model - all non-correlated covariates (after removing some redundancy)
-
-```{r, eval = FALSE}
-bbs_occobject_global.occ.formula <- ~ scale(tol_rel) + scale(svp) + scale(dicot) + scale(cyper) + scale(small_tree)+scale(shrub)+scale(hydro)+scale(subcanopy)+scale(canopy)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.global <- msPGOcc(occ.formula = bbs_occobject_global.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
-                  data = bbs_occobject, 
-                  inits = ms.inits, 
-                  n.samples = 30000, 
-                  priors = ms.priors, 
-                  n.omp.threads = 1, 
-                  verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
-summary(out.ms.global)
-ppc.ms.global.out <- ppcOcc(out.ms.global, 'chi-squared', group = 1)
-summary(ppc.ms.global.out)
-
-waicOcc(out.ms.global)
-
-```
-
-### global model - all non-correlated covariates (after removing some redundancy) and adding in landscape metrics
-
-```{r, eval = FALSE}
-bbs_occobject_land.occ.formula <- ~ scale(developed)+scale(activity.area)+scale(sanctioned.trail)+ scale(bootleg.trail)+scale(stream.edge)+scale(ldi.index.score)
-N <- dim(bbs_occobject$y)[1]
-ms.inits <- list(alpha.comm = 0, 
-                 beta.comm = 0, 
-                 beta = 0, 
-                 alpha = 0,
-                 tau.sq.beta = 1, 
-                 tau.sq.alpha = 1, 
-                 z = apply(bbs_occobject$y, c(1, 2), max, na.rm = TRUE))
-ms.priors <- list(beta.comm.normal = list(mean = 0, var = 2.72),
-                  alpha.comm.normal = list(mean = 0, var = 2.72), 
-                  tau.sq.beta.ig = list(a = 0.1, b = 0.1), 
-                  tau.sq.alpha.ig = list(a = 0.1, b = 0.1))
-out.ms.land <- msPGOcc(occ.formula = bbs_occobject_land.occ.formula, 
-                  det.formula = bbs_occobject.det.best.formula, 
-                  data = bbs_occobject, 
-                  inits = ms.inits, 
-                  n.samples = 30000, 
-                  priors = ms.priors, 
-                  n.omp.threads = 2, 
-                  verbose = TRUE, 
-                  n.report = 6000, 
-                  n.burn = 10000,
-                  n.thin = 50, 
-                  n.chains = 3)
-
-
+                  n.report = n.report, 
+                  n.burn = n.burn,
+                  n.thin = n.thin, 
+                  n.chains = n.chains)
 summary(out.ms.land)
-ppc.ms.land.out <- ppcOcc(out.ms.land, 'chi-squared', group = 1)
-summary(ppc.ms.land.out)
-
+ppc.out.ms.land <- ppcOcc(out.ms.land, 'chi-squared', group = 1)
+summary(ppc.out.ms.land)
 waicOcc(out.ms.land)
 
 ```
@@ -2723,25 +2600,130 @@ waicOcc(out.ms.land)
 we can also print out a table of Widely Applicable Information Criterion (wAIC) values. The lower this is, the better the model fit.
 
 ```{r, eval = FALSE,out.width="200%"}
-AICc_table<-tibble(.rows = 10)
+AICc_table<-tibble(.rows = 9)
 
-AICc_table$model<-c("Null","p ~ day", "p ~ day + time-of-day", "p ~ day^2 + day +tod", "p ~ day, psi ~ vibi-fq", "p ~ day, psi ~ vibi-fq-notree","p ~ day, psi ~ tolerant + seedless vascular + dicots + cyperaceae + small trees","p~day,psi~tolerant","p~day,psi~tolerant + seedless vascular + dicot + cyperaceae + small trees +shrubs+hydro+subcanopy+canopy","p~day,psi~fqi")
+AICc_table$model<-c("Null", "p ~ day + tod + season + dist_roads, psi ~ tol_rel + svp + dicot + cyper + small_tree + shrub + hydro + subcanopy + canopy", "p ~ day + tod + season + dist_roads, psi ~ tol_rel + svp + dicot + cyper + ldi + developed","p ~ day + tod + season + dist_roads, psi ~ developed + activityarea + sanctionedtrail + bootlegtrail + streamedge + ldi","p ~ day + tod + season + dist_roads,psi~tol_rel + svp + dicot + cyper + small_tree","p ~ day + tod + season + dist_roads,psi~canopy + subcanopy + small_tree","p ~ day + tod + season + dist_roads,psi~tol_rel","p ~ day + tod + season + dist_roads,psi~vibi","p ~ day + tod + season + dist_roads,psi~vibi_notrees")
 
-AICc_table$wAIC<-c(waicOcc(out.ms.null)[[3]],waicOcc(out.ms.detect.day)[[3]],waicOcc(out.ms.detect.daytod)[[3]],
-                   waicOcc(out.ms.detect.daytodquad)[[3]],waicOcc(out.ms.vibifq)[[3]],waicOcc(out.ms.vibifqnotrees)[[3]],
-                   waicOcc(out.ms.fullrda)[[3]],waicOcc(out.ms.tolerance)[[3]],waicOcc(out.ms.global)[[3]],waicOcc(out.ms.fqi)[[3]])
+AICc_table$wAIC<-c(waicOcc(out.ms.nullobs)[[3]],waicOcc(out.ms.allveg)[[3]],waicOcc(out.ms.fulllandveg)[[3]],waicOcc(out.ms.land)[[3]],waicOcc(out.ms.rdaveg)[[3]],
+                   waicOcc(out.ms.structure)[[3]],waicOcc(out.ms.tolerance)[[3]],waicOcc(out.ms.vibifq)[[3]],waicOcc(out.ms.vibifqnotrees)[[3]])
 
 ```
 
 ```{r, echo = FALSE}
 
-AICc_table<-read.csv("wAIC_table_revise.csv")
-AICc_table[order(AICc_table$wAIC),]
+AICc_table<-read.csv("wAIC_table_revise_1027.csv")
+AICc_table_2<-AICc_table[,-1]
+
+knitr::kable(AICc_table_2[order(AICc_table_2$wAIC),])
 ```
 
-So, the top model is the global, followed by the stepwise-selected rda model.
+So, the top model is the model with a mix of land cover and vegetation covariates!
 
 Now, we plot based on this top model.
+
+```{r}
+
+
+X.0.dat<-as.data.frame(bbs_occobject$occ.covs) %>%
+  dplyr::select(tol_rel, svp, dicot, cyper, ldi_3k, developed)
+X.0.dat<-cbind(1,X.0.dat)
+
+topmod_predict<-predict(out.ms.fulllandveg,as.matrix(X.0.dat),ignore.RE=TRUE,type="occupancy")
+
+ACFL_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,1,], 2, mean))
+colnames(ACFL_ldi3k)<-c("ldi_3k","ACFLocc")
+
+
+
+ACFL_pred_ldi3k<-cbind(X.0.dat$ldi_3k,apply(topmod_predict$psi.0.samples[,1,], 2, mean))
+colnames(ACFL_pred_ldi3k)<-c("ldi_3k","ACFLocc")
+
+ACFL_ldi3kplot_pred<-ggplot(aes(ldi_3k,ACFLocc),data=data.frame(ACFL_pred_ldi3k))+geom_point()+geom_smooth()
+
+ACFL_ldi3kplot_pred
+
+
+ACFL_ldi3kplot<-ggplot(aes(ldi_3k,ACFLocc),data=data.frame(ACFL_ldi3k))+geom_point()+geom_smooth(data=data.frame(ACFL_pred_ldi3k))
+
+ACFL_ldi3kplot
+
+
+HOWA_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,56,], 2, mean))
+colnames(HOWA_ldi3k)<-c("ldi_3k","HOWAocc")
+
+HOWA_ldi3kplot<-ggplot(aes(ldi_3k,HOWAocc),data=data.frame(HOWA_ldi3k))+stat_smooth()
+
+HOWA_ldi3kplot
+
+
+allocc_pred<-cbind(X.0.dat$ldi_3k,X.0.dat$tol_rel,X.0.dat$developed,apply(topmod_predict$psi.0.samples[,,], 3, mean))
+
+colnames(allocc_pred)<-c("ldi_3k","tol_rel","developed","Allocc")
+
+allocc_pred_ldi3kplot<-ggplot(aes(ldi_3k,Allocc),data=data.frame(allocc_pred))+stat_smooth(method="gam")
+
+allocc_pred_ldi3kplot
+
+allocc_tolrelplot<-ggplot(aes(tol_rel,Allocc),data=data.frame(allocc_pred))+stat_smooth(method="gam")
+
+allocc_tolrelplot
+
+
+
+
+allocc_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,,], 3, mean))
+
+colnames(allocc_ldi3k)<-c("ldi_3k","Allocc")
+
+allocc_ldi3kplot<-ggplot(aes(ldi_3k,Allocc),data=data.frame(allocc_ldi3k))+geom_point()
+
+allocc_ldi3kplot
+
+
+```
+
+### plot single covariate effects
+
+```{r}
+
+tol_rel_pred<-seq(min(X.0.dat$tol_rel), max(X.0.dat$tol_rel), by = 0.01)
+
+tolrel.pred <- (tol_rel_pred - mean(bbs_occobject$occ.covs[, 17])) / sd(bbs_occobject$occ.covs[, 17])
+
+
+occu_tolrel_newdata <- data.frame(int=1,tol_rel = tolrel.pred,svp = mean(bbs_occobject$occ.covs[, 9]) / sd(bbs_occobject$occ.covs[, 9]),
+                                  dicot = mean(bbs_occobject$occ.covs[, 5]) / sd(bbs_occobject$occ.covs[, 5]),
+                                  cyper=mean(bbs_occobject$occ.covs[, 4]) / sd(bbs_occobject$occ.covs[, 4]),
+                                  ldi_3k=mean(bbs_occobject$occ.covs[, 34]) / sd(bbs_occobject$occ.covs[, 34]),
+                                  developed=mean(bbs_occobject$occ.covs[, 23]) / sd(bbs_occobject$occ.covs[, 23]))
+
+tolrelpred<-predict(out.ms.fulllandveg,as.matrix(occu_tolrel_newdata))
+
+occu_tolrel_newdata$meanpsi<-apply(tolrelpred$psi.0.samples[,,], 3, mean)
+
+occu_tolrel_newdata$sdpsi<-apply(tolrelpred$psi.0.samples[,,], 3, sd)
+
+occu_tolrel_newdata$meanpsi_ACFL<-apply(tolrelpred$psi.0.samples[,1,], 2, mean)
+
+occu_tolrel_newdata$sdpsi_ACFL<-apply(tolrelpred$psi.0.samples[,1,], 2, sd)
+
+
+occu_tolrel_newdata$meanpsi_HOWA<-apply(tolrelpred$psi.0.samples[,56,], 2, mean)
+
+occu_tolrel_newdata$sdpsi_HOWA<-apply(tolrelpred$psi.0.samples[,56,], 2, sd)
+
+allocc_tolrelplot_2<-ggplot(aes(tol_rel,meanpsi),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi - sdpsi, ymax = meanpsi + sdpsi),alpha=0.5,fill="grey70")+ylim(c(0,1))+xlim(c(-1,1))
+allocc_tolrelplot_2
+
+allocc_tolrelplot_ACFL<-ggplot(aes(tol_rel,meanpsi_ACFL),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.5,fill="grey70")+ylim(c(0,1))
+allocc_tolrelplot_ACFL
+
+allocc_tolrelplot_HOWA<-ggplot(aes(tol_rel,meanpsi_HOWA),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.5,fill="grey70")+ylim(c(0,1))
+allocc_tolrelplot_HOWA
+
+
+```
+
 
 ### plotting using an RShiny app
 
@@ -2813,7 +2795,7 @@ for(i in 1:length(sppnames)){
   
 }
 
-saveRDS(idwrasters,"U:/DataAnalysis/BreedingBirds/idwrasters_fulllandveg.Rdata")
+saveRDS(idwrasters_landveg,"U:/DataAnalysis/BreedingBirds/idwrasters_fulllandveg.Rdata")
 
 saveRDS(sppnames,"U:/DataAnalysis/BreedingBirds/sppnames.Rdata")
 
@@ -2888,22 +2870,32 @@ Finally, we can also run some plots depicting covariate effects for each species
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
 #options(max.print=1000000)
-#sink("outmsfulllandveg_90percent.txt")
+#sink("outmsfulllandveg_90percent_rev.txt")
 #print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
 #sink() 
 
-covars<-read.csv("outmslandveg_covar_migratory.csv",header=T)
+covars<-read.csv("outmsfulllandveg_90percent_rev_sig.csv",header=T)
 
 
-covars_ldi<-subset(covars,covars$Covariate=="ldi.index.score")
+covars_ldi<-subset(covars,covars$Covariate=="ldi_3k")
 
 covars_ldi<-covars_ldi[order(covars_ldi$Mean),]
 
-spp_tolorder<-factor(covars_ldi$Species,levels=covars_ldi$Species)
+spp_ldiorder<-factor(covars_ldi$Species,levels=covars_ldi$Species)
 
-covars_ldi$spporder<-spp_tolorder
+covars_ldi$spporder<-spp_ldiorder
 
-ggplot(aes(x=Mean,y=spp_tolorder),data=covars_ldi)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Landscape development index")
+ggplot(aes(x=Mean,y=spp_ldiorder),data=covars_ldi)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate - occupancy")+ylab("Landscape development index")
+
+covars_distroad<-subset(covars,covars$Covariate=="dist_road")
+
+covars_distroad<-covars_distroad[order(covars_distroad$Mean),]
+
+spp_roadorder<-factor(covars_distroad$Species,levels=covars_distroad$Species)
+
+covars_distroad$spporder<-spp_roadorder
+
+ggplot(aes(x=Mean,y=spp_roadorder),data=covars_distroad)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate - detection")+ylab("Distance to roads")
 
 
 covars_intercept<-subset(covars,covars$Covariate=="Intercept")
@@ -2981,25 +2973,110 @@ ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorba
 
 ```
 
-### covariates by migratory status
+### just plotting a few focal species
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
+#options(max.print=1000000)
+#sink("outmsfulllandveg_90percent_rev.txt")
+#print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
+#sink() 
 
-migratecovars<-read.csv("outmslandveg_covar_migratory_sig.csv",header=T)
+covars<-read.csv("outmsfulllandveg_90percent_rev_sig.csv",header=T)
 
-migratecovars_occ<-migratecovars[migratecovars$Process %in% "Occupancy",]
+covars_foc<-covars[covars$Species %in% c("AcadianFlycatcher","HoodedWarbler","PileatedWoodpecker","SongSparrow"),]
 
-migratecovars_occ_nointercept<-migratecovars_occ[!(migratecovars_occ$Covariate %in% "Intercept"),]
+covars_ldi<-subset(covars_foc,covars_foc$Covariate=="ldi_3k")
 
-migratecovars_occ_nointercept_sig<-migratecovars_occ_nointercept[(migratecovars_occ_nointercept$Sig %in% "YES"),]
+covars_ldi<-covars_ldi[order(covars_ldi$Mean),]
+
+spp_ldiorder<-factor(covars_ldi$Species,levels=sort(covars_ldi$Species,decreasing = TRUE))
+
+covars_ldi$spporder<-spp_ldiorder
+
+ggplot(aes(x=Mean,y=spp_ldiorder),data=covars_ldi)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=16)+xlab("Covariate estimate - occupancy")+ylab("Landscape development index")
+
+covars_distroad<-subset(covars_foc,covars_foc$Covariate=="dist_road")
+
+covars_distroad<-covars_distroad[order(covars_distroad$Mean),]
+
+spp_roadorder<-factor(covars_distroad$Species,levels=covars_distroad$Species)
+
+covars_distroad$spporder<-spp_roadorder
+
+ggplot(aes(x=Mean,y=spp_roadorder),data=covars_distroad)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate - detection")+ylab("Distance to roads")
 
 
-migratecovars_sum<-migratecovars_occ_nointercept_sig %>%
-  dplyr::select(Covariate, Mean,Migratory) %>%
-  group_by(Migratory,Covariate) %>%
-  summarise(Mean_migratory=mean(Mean),SD_migratory=sd(Mean))
+covars_intercept<-subset(covars_foc,covars_foc$Covariate=="Intercept")
+
+covars_detect_intercept<-subset(covars_intercept,covars_intercept$Process=="Detection")
+
+covars_detect_intercept<-covars_detect_intercept[order(covars_detect_intercept$Mean),]
+
+spp_detectorder<-factor(covars_detect_intercept$Species,levels=sort(covars_detect_intercept$Species,decreasing=TRUE))
+
+covars_detect_intercept$spporder<-spp_detectorder
+
+ggplot(aes(x=Mean,y=spporder),data=covars_detect_intercept)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("detection intercept")
 
 
-p<-ggplot(migratecovars_sum,aes(x=Migratory,y=Mean_migratory,fill=Covariate))+geom_col(position="dodge")+theme_classic(base_size=20)
-p
+
+
+covars_developed<-subset(covars_foc,covars_foc$Covariate=="developed")
+
+covars_developed<-covars_developed[order(covars_developed$Mean),]
+
+spp_tolorder<-factor(covars_developed$Species,levels=sort(covars_developed$Species,decreasing=TRUE))
+
+covars_developed$spporder<-spp_tolorder
+
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_developed)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=16)+xlab("Covariate estimate")+ylab("developed")
+
+
+covars_tolerance<-subset(covars_foc,covars_foc$Covariate=="tol_rel")
+
+covars_tolerance<-covars_tolerance[order(covars_tolerance$Mean),]
+
+spp_tolorder<-factor(covars_tolerance$Species,levels=sort(covars_tolerance$Species,decreasing=TRUE))
+
+covars_tolerance$spporder<-spp_tolorder
+
+ggplot(aes(x=Mean,y=spp_tolorder),data=covars_tolerance)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=16)+xlab("Covariate estimate")+ylab("Relative cover of tolerant plants")
+
+
+covars_svp<-subset(covars_foc,covars_foc$Covariate=="svp")
+
+covars_svp<-covars_svp[order(covars_svp$Mean),]
+
+
+spp_svporder<-factor(covars_svp$Species,levels=covars_svp$Species)
+
+covars_svp$spporder<-spp_svporder
+
+ggplot(aes(x=Mean,y=spp_svporder),data=covars_svp)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of seedless vascular plants")
+
+
+covars_dicot<-subset(covars_foc,covars_foc$Covariate=="dicot")
+
+covars_dicot<-covars_dicot[order(covars_dicot$Mean),]
+
+
+spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
+
+covars_dicot$spporder<-spp_dicotorder
+
+ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of dicots")
+
+
+covars_cyper<-subset(covars_foc,covars_foc$Covariate=="cyper")
+
+covars_cyper<-covars_cyper[order(covars_cyper$Mean),]
+
+
+spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
+
+covars_cyper$spporder<-spp_cyperorder
+
+ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
+
+
 ```

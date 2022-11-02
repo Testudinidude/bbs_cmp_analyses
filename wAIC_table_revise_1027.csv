@@ -1,0 +1,10 @@
+"","model","wAIC"
+"1","Null",36879.2340341999
+"2","p ~ day + tod + season + dist_roads, psi ~ tol_rel + svp + dicot + cyper + small_tree + shrub + hydro + subcanopy + canopy",35854.3619544194
+"3","p ~ day + tod + season + dist_roads, psi ~ tol_rel + svp + dicot + cyper + ldi + developed",35681.7479429571
+"4","p ~ day + tod + season + dist_roads, psi ~ developed + activityarea + sanctionedtrail + bootlegtrail + streamedge + ldi",36172.7660407351
+"5","p ~ day + tod + season + dist_roads,psi~tol_rel + svp + dicot + cyper + small_tree",35874.8857751034
+"6","p ~ day + tod + season + dist_roads,psi~canopy + subcanopy + small_tree",36402.4832372361
+"7","p ~ day + tod + season + dist_roads,psi~tol_rel",36040.5475702219
+"8","p ~ day + tod + season + dist_roads,psi~vibi",35882.1183219249
+"9","p ~ day + tod + season + dist_roads,psi~vibi_notrees",36066.5885111137
