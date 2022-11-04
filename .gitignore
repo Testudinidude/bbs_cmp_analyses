@@ -29,3 +29,6 @@ vignettes/*.pdf
 .RDataTmp
 RData_archive
 Thumbs.db
+occu_ldi_newdata.rds
+occu_tolrel_newdata.rds
+out.ms.fulllandveg.rds

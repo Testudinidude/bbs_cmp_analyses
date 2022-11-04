@@ -514,7 +514,7 @@ p_0<-rda(birdcomm_bin~1,vegecomm_drop,scale=T)
 p_1<-rda(birdcomm_bin~.,vegecomm_drop,scale=T)
 
 set.seed(12345)
-p_step<- ordistep(p_0, scope = formula(p_1))
+p_step<- ordistep(p_0, scope = formula(p_1),trace=F)
 p_step
 
 anova(p_step)
@@ -558,8 +558,7 @@ p_land_0<-rda(birdcomm_bin~1,landcomm_drop,scale=T)
 p_land_1<-rda(birdcomm_bin~.,landcomm_drop,scale=T)
 
 set.seed(12345)
-p_land_step<- ordistep(p_land_0, scope = formula(p_land_1))
-p_land_step
+p_land_step<- ordistep(p_land_0, scope = formula(p_land_1),trace=F)
 
 anova(p_land_step)
 anova(p_land_step,by="term")
@@ -576,7 +575,7 @@ barplot (expl_var[1:20], col = c(rep ('red', length (constrained_eig)), rep ('bl
 
 And now for the vegetation and land cover dataset:
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
 
 p_landveg<-rda(birdcomm_bin~.,landvegcomm_drop,scale=T)
 fit_landveg<-envfit(p_landveg,landvegcomm_drop,scale=T)
@@ -586,7 +585,7 @@ p_landveg_0<-rda(birdcomm_bin~1,landvegcomm_drop,scale=T)
 p_landveg_1<-rda(birdcomm_bin~.,landvegcomm_drop,scale=T)
 
 set.seed(12345)
-p_landveg_step<- ordistep(p_landveg_0, scope = formula(p_landveg_1))
+p_landveg_step<- ordistep(p_landveg_0, scope = formula(p_landveg_1),trace = F)
 p_landveg_step
 
 
@@ -873,7 +872,7 @@ ggord(lda_birdcomm_full, community, xlim=c(-10,25),ylim = c(-7.5, 12.5),alpha=0,
 
 ```
 
-![lda](./lda_birdcomm.png)
+![](./lda_birdcomm.png)
 
 ### co-occurrence networks
 
@@ -1044,10 +1043,8 @@ S <- specnumber(birdcomm_bin)
 vegecomm_richness<-cbind(vegecomm,S)
 
 S_vibi<-lm(S~vibifq,vegecomm_richness)
-summary(S_vibi)
 
 S_fqi<-lm(S~fqi,vegecomm_richness)
-summary(S_fqi)
 
 ggplot(aes(x=vibifq,y=S),data=vegecomm_richness)+geom_point()+geom_smooth()
 
@@ -1130,95 +1127,65 @@ month<-month(date)
 S_plotdate<-specnumber(birds_bycount)
 
 Rich_vibifq<-lmer(S_plotdate~vibifq+(1|simp_plot),vegecomm_bycount)
-summary(Rich_vibifq)
 
 Rich_vibifqnotrees<-lmer(S_plotdate~vibifqnotrees+(1|simp_plot),vegecomm_bycount)
-summary(Rich_vibifqnotrees)
 
 Rich_carex<-lmer(S_plotdate~carex+(1|simp_plot),vegecomm_bycount)
-summary(Rich_carex)
 
 Rich_cyper<-lmer(S_plotdate~cyper+(1|simp_plot),vegecomm_bycount)
-summary(Rich_cyper)
 
 Rich_dicot<-lmer(S_plotdate~dicot+(1|simp_plot),vegecomm_bycount)
-summary(Rich_dicot)
 
 Rich_shade<-lmer(S_plotdate~shade+(1|simp_plot),vegecomm_bycount)
-summary(Rich_shade)
 
 Rich_hydro<-lmer(S_plotdate~hydro+(1|simp_plot),vegecomm_bycount)
-summary(Rich_hydro)
 
 Rich_shrub<-lmer(S_plotdate~shrub+(1|simp_plot),vegecomm_bycount)
-summary(Rich_shrub)
 
 Rich_svp<-lmer(S_plotdate~svp+(1|simp_plot),vegecomm_bycount)
-summary(Rich_svp)
 
 Rich_ap<-lmer(S_plotdate~ap+(1|simp_plot),vegecomm_bycount)
-summary(Rich_ap)
 
 Rich_bryo<-lmer(S_plotdate~bryo+(1|simp_plot),vegecomm_bycount)
-summary(Rich_bryo)
 
 Rich_sens_rel<-lmer(S_plotdate~sens_rel+(1|simp_plot),vegecomm_bycount)
-summary(Rich_sens_rel)
 
 Rich_tol_rel<-lmer(S_plotdate~tol_rel+(1|simp_plot),vegecomm_bycount)
-summary(Rich_tol_rel)
 
 Rich_fqi<-lmer(S_plotdate~fqi+(1|simp_plot),vegecomm_bycount)
-summary(Rich_fqi)
 
 Rich_inv<-lmer(S_plotdate~inv+(1|simp_plot),vegecomm_bycount)
-summary(Rich_inv)
 
 Rich_small_tree<-lmer(S_plotdate~small_tree+(1|simp_plot),vegecomm_bycount)
-summary(Rich_small_tree)
 
 Rich_subcanopy<-lmer(S_plotdate~subcanopy+(1|simp_plot),vegecomm_bycount)
-summary(Rich_subcanopy)
 
 Rich_canopy<-lmer(S_plotdate~canopy+(1|simp_plot),vegecomm_bycount)
-summary(Rich_canopy)
 
 Rich_developed<-lmer(S_plotdate~developed+(1|simp_plot),landcomm_bycount)
-summary(Rich_developed)
 
 Rich_activity.area<-lmer(S_plotdate~activity.area+(1|simp_plot),landcomm_bycount)
-summary(Rich_activity.area)
 
 Rich_closest.developed<-lmer(S_plotdate~closest.developed+(1|simp_plot),landcomm_bycount)
-summary(Rich_closest.developed)
 
 Rich_sanctioned.trail<-lmer(S_plotdate~sanctioned.trail+(1|simp_plot),landcomm_bycount)
-summary(Rich_sanctioned.trail)
 
 Rich_bootleg.trail<-lmer(S_plotdate~bootleg.trail+(1|simp_plot),landcomm_bycount)
 summary(Rich_bootleg.trail)
 
 Rich_developed.edge<-lmer(S_plotdate~developed.edge+(1|simp_plot),landcomm_bycount)
-summary(Rich_developed.edge)
 
 Rich_stream.edge<-lmer(S_plotdate~stream.edge+(1|simp_plot),landcomm_bycount)
-summary(Rich_stream.edge)
 
 Rich_total.edge<-lmer(S_plotdate~total.edges+(1|simp_plot),landcomm_bycount)
-summary(Rich_total.edge)
 
 Rich_fragment.area<-lmer(S_plotdate~fragment.area+(1|simp_plot),landcomm_bycount)
-summary(Rich_fragment.area)
-
 
 Rich_fragment.perimeter<-lmer(S_plotdate~fragment.perimeter+(1|simp_plot),landcomm_bycount)
-summary(Rich_fragment.perimeter)
 
 Rich_ldi.index.score<-lmer(S_plotdate~ldi_3k+(1|simp_plot),landcomm_bycount)
-summary(Rich_ldi.index.score)
 
 Rich_null<-lmer(S_plotdate~1+(1|simp_plot),vegecomm_bycount)
-summary(Rich_null)
 
 richmods<-list(Rich_ap,Rich_bryo,Rich_canopy,Rich_carex,Rich_cyper,Rich_dicot,Rich_fqi,Rich_hydro,Rich_inv,Rich_sens_rel,Rich_shade,Rich_shrub,Rich_small_tree,Rich_subcanopy,Rich_svp,Rich_tol_rel,Rich_vibifq,Rich_vibifqnotrees,Rich_activity.area,Rich_bootleg.trail,Rich_closest.developed,Rich_developed,Rich_developed.edge,Rich_fragment.area,Rich_fragment.perimeter,Rich_ldi.index.score,Rich_stream.edge,Rich_total.edge,Rich_null)
 
@@ -1240,8 +1207,6 @@ We can also verify that our mixed effects model fits better compared to the fixe
 
 ```{r}
 Rich_tol_rel_fixed<-lm(S_plotdate~tol_rel,vegecomm_bycount)
-summary(Rich_tol_rel_fixed)
-
 anova(Rich_tol_rel, Rich_tol_rel_fixed) 
 ```
 
@@ -1336,61 +1301,42 @@ Now we can proceed with exploring richness patterns across reservations.
 vegecomm_reserv_richness$interrich_n3<-interpolatedrichness_n3$richness
 
 Rich_reserv_vibifq<-lm(interrich_n3~vibifq,vegecomm_reserv_richness)
-summary(Rich_reserv_vibifq)
 
 Rich_reserv_vibifqnotrees<-lm(interrich_n3~vibifqnotrees,vegecomm_reserv_richness)
-summary(Rich_reserv_vibifqnotrees)
 
 Rich_reserv_carex<-lm(interrich_n3~carex,vegecomm_reserv_richness)
-summary(Rich_reserv_carex)
 
 Rich_reserv_cyper<-lm(interrich_n3~cyper,vegecomm_reserv_richness)
-summary(Rich_reserv_cyper)
 
 Rich_reserv_dicot<-lm(interrich_n3~dicot,vegecomm_reserv_richness)
-summary(Rich_reserv_dicot)
 
 Rich_reserv_shade<-lm(interrich_n3~shade,vegecomm_reserv_richness)
-summary(Rich_reserv_shade)
 
 Rich_reserv_hydro<-lm(interrich_n3~hydro,vegecomm_reserv_richness)
-summary(Rich_reserv_hydro)
 
 Rich_reserv_shrub<-lm(interrich_n3~shrub,vegecomm_reserv_richness)
-summary(Rich_reserv_shrub)
 
 Rich_reserv_svp<-lm(interrich_n3~svp,vegecomm_reserv_richness)
-summary(Rich_reserv_svp)
 
 Rich_reserv_ap<-lm(interrich_n3~ap,vegecomm_reserv_richness)
-summary(Rich_reserv_ap)
 
 Rich_reserv_bryo<-lm(interrich_n3~bryo,vegecomm_reserv_richness)
-summary(Rich_reserv_bryo)
 
 Rich_reserv_sens_rel<-lm(interrich_n3~sens_rel,vegecomm_reserv_richness)
-summary(Rich_reserv_sens_rel)
 
 Rich_reserv_tol_rel<-lm(interrich_n3~tol_rel,vegecomm_reserv_richness)
-summary(Rich_reserv_tol_rel)
 
 Rich_reserv_fqi<-lm(interrich_n3~fqi,vegecomm_reserv_richness)
-summary(Rich_reserv_fqi)
 
 Rich_reserv_inv<-lm(interrich_n3~inv,vegecomm_reserv_richness)
-summary(Rich_reserv_inv)
 
 Rich_reserv_small_tree<-lm(interrich_n3~small_tree,vegecomm_reserv_richness)
-summary(Rich_reserv_small_tree)
 
 Rich_reserv_subcanopy<-lm(interrich_n3~subcanopy,vegecomm_reserv_richness)
-summary(Rich_reserv_subcanopy)
 
 Rich_reserv_canopy<-lm(interrich_n3~canopy,vegecomm_reserv_richness)
-summary(Rich_reserv_canopy)
 
 Rich_reserv_null<-lm(interrich_n3~1,vegecomm_reserv_richness)
-summary(Rich_reserv_null)
 
 richmods_reserv<-list(Rich_reserv_ap,Rich_reserv_bryo,Rich_reserv_canopy,Rich_reserv_carex,Rich_reserv_cyper,Rich_reserv_dicot,Rich_reserv_fqi,Rich_reserv_hydro,Rich_reserv_inv,Rich_reserv_sens_rel,Rich_reserv_shade,Rich_reserv_shrub,Rich_reserv_small_tree,Rich_reserv_subcanopy,Rich_reserv_svp,Rich_reserv_tol_rel,Rich_reserv_vibifq,Rich_reserv_vibifqnotrees,Rich_reserv_null)
 
@@ -1413,59 +1359,9 @@ ggplot(aes(x=reservatio,y=interrich_n3),data=vegecomm_reserv_richness)+geom_col(
 
 In confirmation of our prior ordination plots, it now appears that Rocky River is one of the most species rich areas - followed by Hinckley, South Chagrin, Bedford, and Brecksville.
 
-#### reservation shape features and species richness
-
-While these vegetative associations are certainly important, it is often helpful to also think about how the shape of our reservations influences the species found within them. There is a rich body of literature on the effects of landscape context and configuration on ecological processes and patterns - and this is an area I am particularly interested in!
-
-```{r,warning=FALSE,error=FALSE,message=FALSE,echo=FALSE}
-structuralconnectivity<-read.csv("Reservations_LandMetrics_bbs.csv",header=T)
-
-vegecomm_reserv_richness_struct<-cbind(vegecomm_reserv_richness,structuralconnectivity)
-
-Rich_reserv_acres<-lm(interrich_n3~acres,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_acres)
-
-Rich_reserv_ai<-lm(interrich_n3~ai,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_ai)
-
-Rich_reserv_areamn<-lm(interrich_n3~area_mn,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_areamn)
-
-Rich_reserv_ca<-lm(interrich_n3~ca,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_ca)
-
-Rich_reserv_cai_mn<-lm(interrich_n3~cai_mn,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_cai_mn)
-
-Rich_reserv_circle_mn<-lm(interrich_n3~circle_mn,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_circle_mn)
-
-Rich_reserv_clumpy<-lm(interrich_n3~clumpy,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_clumpy)
-
-Rich_reserv_cohesion<-lm(interrich_n3~cohesion,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_cohesion)
-
-Rich_reserv_contig_mn<-lm(interrich_n3~contig_mn,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_contig_mn)
-
-Rich_reserv_core_mn<-lm(interrich_n3~core_mn,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_core_mn)
-
-Rich_reserv_cpland<-lm(interrich_n3~cpland,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_cpland)
-
-Rich_reserv_dcad<-lm(interrich_n3~dcad,vegecomm_reserv_richness_struct)
-summary(Rich_reserv_dcad)
-
-```
-
 # multi-species occupancy modelling
 
-
-
-
-```{r,echo = FALSE, eval = FALSE}
+```{r,echo = FALSE, warning = FALSE, message = FALSE}
 vegecomm<-CMP_bbs_pcap_join_pcaponly_pcapsum[,2:26]
 
 landvegcomm<-cbind(vegecomm,landcomm)
@@ -1758,8 +1654,6 @@ sitechecks_road_2<-sitechecks_road_2[!duplicated(sitechecks_road_2), ]
 
 sitechecks_road_detcov<-as.matrix(cbind(sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road,sitechecks_road_2$dist_road))
 
-sitechecks_surveyhistory$simp_plot
-
 bbs_occobject$det.covs$day<-as.matrix(sitechecks_surveyhistory[,2:9])
 
 seasons<-round(sitechecks_surveyhistory[,2:9]/365)+1
@@ -1795,8 +1689,6 @@ observers<-observers %>%
   mutate(observer = replace(observer, observer == "Patti", "Patti Donnellan")) %>%
   mutate(observer = replace(observer, observer == "Howell", "Nancy Howell")) %>%
   mutate(observer = replace(observer, observer == "Erik Shaffer Matt K", "Erik Shaffer")) 
-
-unique(factor(observers$observer))
 
 observers$simp_plot<-as.factor(observers$simp_plot)
 
@@ -1870,14 +1762,16 @@ bbs_occobject$occ.covs<-as.matrix(occcov)
 
 bbs_occobject$coords<-as.matrix(landvegcomm[,2:3])
 
-summary(bbs_occobject$y[4,,])
-
 ```
+
+
+
+
+```{r, echo = FALSE, eval = FALSE}
 
 
 ## making simpler datasets
 
-```{r, echo = FALSE, eval = F}
 bbs_occobject_three<-list()
 
 bbs_occobject_three$y<-array(dim=c(103,164,3))
@@ -2506,6 +2400,8 @@ summary(ppc.out.ms.fulllandveg)
 
 waicOcc(out.ms.fulllandveg)
 
+write_rds(out.ms.fulllandveg,"out.ms.fulllandveg.rds")
+
 ```
 
 ### occupancy model with just canopy/woody veg-related covariates
@@ -2609,7 +2505,7 @@ AICc_table$wAIC<-c(waicOcc(out.ms.nullobs)[[3]],waicOcc(out.ms.allveg)[[3]],waic
 
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE,out.width="200%"}
 
 AICc_table<-read.csv("wAIC_table_revise_1027.csv")
 AICc_table_2<-AICc_table[,-1]
@@ -2621,74 +2517,26 @@ So, the top model is the model with a mix of land cover and vegetation covariate
 
 Now, we plot based on this top model.
 
-```{r}
 
+
+### plot single covariate effects
+
+```{r,eval=FALSE,echo=FALSE}
+
+out.ms.fulllandveg<-read_rds("out.ms.fulllandveg.rds")
 
 X.0.dat<-as.data.frame(bbs_occobject$occ.covs) %>%
   dplyr::select(tol_rel, svp, dicot, cyper, ldi_3k, developed)
 X.0.dat<-cbind(1,X.0.dat)
 
-topmod_predict<-predict(out.ms.fulllandveg,as.matrix(X.0.dat),ignore.RE=TRUE,type="occupancy")
-
-ACFL_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,1,], 2, mean))
-colnames(ACFL_ldi3k)<-c("ldi_3k","ACFLocc")
-
-
-
-ACFL_pred_ldi3k<-cbind(X.0.dat$ldi_3k,apply(topmod_predict$psi.0.samples[,1,], 2, mean))
-colnames(ACFL_pred_ldi3k)<-c("ldi_3k","ACFLocc")
-
-ACFL_ldi3kplot_pred<-ggplot(aes(ldi_3k,ACFLocc),data=data.frame(ACFL_pred_ldi3k))+geom_point()+geom_smooth()
-
-ACFL_ldi3kplot_pred
-
-
-ACFL_ldi3kplot<-ggplot(aes(ldi_3k,ACFLocc),data=data.frame(ACFL_ldi3k))+geom_point()+geom_smooth(data=data.frame(ACFL_pred_ldi3k))
-
-ACFL_ldi3kplot
-
-
-HOWA_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,56,], 2, mean))
-colnames(HOWA_ldi3k)<-c("ldi_3k","HOWAocc")
-
-HOWA_ldi3kplot<-ggplot(aes(ldi_3k,HOWAocc),data=data.frame(HOWA_ldi3k))+stat_smooth()
-
-HOWA_ldi3kplot
-
-
-allocc_pred<-cbind(X.0.dat$ldi_3k,X.0.dat$tol_rel,X.0.dat$developed,apply(topmod_predict$psi.0.samples[,,], 3, mean))
-
-colnames(allocc_pred)<-c("ldi_3k","tol_rel","developed","Allocc")
-
-allocc_pred_ldi3kplot<-ggplot(aes(ldi_3k,Allocc),data=data.frame(allocc_pred))+stat_smooth(method="gam")
-
-allocc_pred_ldi3kplot
-
-allocc_tolrelplot<-ggplot(aes(tol_rel,Allocc),data=data.frame(allocc_pred))+stat_smooth(method="gam")
-
-allocc_tolrelplot
-
-
-
-
-allocc_ldi3k<-cbind(X.0.dat$ldi_3k,apply(out.ms.fulllandveg$psi.samples[,,], 3, mean))
-
-colnames(allocc_ldi3k)<-c("ldi_3k","Allocc")
-
-allocc_ldi3kplot<-ggplot(aes(ldi_3k,Allocc),data=data.frame(allocc_ldi3k))+geom_point()
-
-allocc_ldi3kplot
-
-
-```
-
-### plot single covariate effects
-
-```{r}
-
 tol_rel_pred<-seq(min(X.0.dat$tol_rel), max(X.0.dat$tol_rel), by = 0.01)
+ldi_pred<-seq(min(X.0.dat$ldi_3k), max(X.0.dat$ldi_3k), by = 0.1)
+
 
 tolrel.pred <- (tol_rel_pred - mean(bbs_occobject$occ.covs[, 17])) / sd(bbs_occobject$occ.covs[, 17])
+
+ldi.pred <- (ldi_pred - mean(bbs_occobject$occ.covs[,34])) / sd(bbs_occobject$occ.covs[,34])
+
 
 
 occu_tolrel_newdata <- data.frame(int=1,tol_rel = tolrel.pred,svp = mean(bbs_occobject$occ.covs[, 9]) / sd(bbs_occobject$occ.covs[, 9]),
@@ -2697,29 +2545,99 @@ occu_tolrel_newdata <- data.frame(int=1,tol_rel = tolrel.pred,svp = mean(bbs_occ
                                   ldi_3k=mean(bbs_occobject$occ.covs[, 34]) / sd(bbs_occobject$occ.covs[, 34]),
                                   developed=mean(bbs_occobject$occ.covs[, 23]) / sd(bbs_occobject$occ.covs[, 23]))
 
+occu_ldi_newdata <- data.frame(int=1,tol_rel = mean(bbs_occobject$occ.covs[, 17]) / sd(bbs_occobject$occ.covs[, 17]),
+                                  svp = mean(bbs_occobject$occ.covs[, 9]) / sd(bbs_occobject$occ.covs[, 9]),
+                                  dicot = mean(bbs_occobject$occ.covs[, 5]) / sd(bbs_occobject$occ.covs[, 5]),
+                                  cyper=mean(bbs_occobject$occ.covs[, 4]) / sd(bbs_occobject$occ.covs[, 4]),
+                                  ldi_3k=ldi.pred,
+                                  developed=mean(bbs_occobject$occ.covs[, 23]) / sd(bbs_occobject$occ.covs[, 23]))
+
 tolrelpred<-predict(out.ms.fulllandveg,as.matrix(occu_tolrel_newdata))
+
+ldipred<-predict(out.ms.fulllandveg,as.matrix(occu_ldi_newdata))
+
 
 occu_tolrel_newdata$meanpsi<-apply(tolrelpred$psi.0.samples[,,], 3, mean)
 
 occu_tolrel_newdata$sdpsi<-apply(tolrelpred$psi.0.samples[,,], 3, sd)
 
+occu_ldi_newdata$meanpsi<-apply(ldipred$psi.0.samples[,,], 3, mean)
+
+occu_ldi_newdata$sdpsi<-apply(ldipred$psi.0.samples[,,], 3, sd)
+
 occu_tolrel_newdata$meanpsi_ACFL<-apply(tolrelpred$psi.0.samples[,1,], 2, mean)
 
 occu_tolrel_newdata$sdpsi_ACFL<-apply(tolrelpred$psi.0.samples[,1,], 2, sd)
 
+occu_ldi_newdata$meanpsi_ACFL<-apply(ldipred$psi.0.samples[,1,], 2, mean)
+
+occu_ldi_newdata$sdpsi_ACFL<-apply(ldipred$psi.0.samples[,1,], 2, sd)
 
 occu_tolrel_newdata$meanpsi_HOWA<-apply(tolrelpred$psi.0.samples[,56,], 2, mean)
 
 occu_tolrel_newdata$sdpsi_HOWA<-apply(tolrelpred$psi.0.samples[,56,], 2, sd)
 
-allocc_tolrelplot_2<-ggplot(aes(tol_rel,meanpsi),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi - sdpsi, ymax = meanpsi + sdpsi),alpha=0.5,fill="grey70")+ylim(c(0,1))+xlim(c(-1,1))
+occu_ldi_newdata$meanpsi_HOWA<-apply(ldipred$psi.0.samples[,56,], 2, mean)
+
+occu_ldi_newdata$sdpsi_HOWA<-apply(ldipred$psi.0.samples[,56,], 2, sd)
+
+occu_tolrel_newdata$meanpsi_PIWO<-apply(tolrelpred$psi.0.samples[,69,], 2, mean)
+
+occu_tolrel_newdata$sdpsi_PIWO<-apply(tolrelpred$psi.0.samples[,69,], 2, sd)
+
+occu_ldi_newdata$meanpsi_PIWO<-apply(ldipred$psi.0.samples[,69,], 2, mean)
+
+occu_ldi_newdata$sdpsi_PIWO<-apply(ldipred$psi.0.samples[,69,], 2, sd)
+
+occu_tolrel_newdata$meanpsi_SOSP<-apply(tolrelpred$psi.0.samples[,85,], 2, mean)
+
+occu_tolrel_newdata$sdpsi_SOSP<-apply(tolrelpred$psi.0.samples[,85,], 2, sd)
+
+occu_ldi_newdata$meanpsi_SOSP<-apply(ldipred$psi.0.samples[,85,], 2, mean)
+
+occu_ldi_newdata$sdpsi_SOSP<-apply(ldipred$psi.0.samples[,85,], 2, sd)
+
+write_rds(occu_ldi_newdata,"occu_ldi_newdata.rds")
+
+write_rds(occu_tolrel_newdata,"occu_tolrel_newdata.rds")
+```
+
+```{r,echo=FALSE}
+
+occu_ldi_newdata<-read_rds("occu_ldi_newdata.rds")
+occu_tolrel_newdata<-read_rds("occu_tolrel_newdata.rds")
+
+
+allocc_tolrelplot_2<-ggplot(aes(tol_rel,meanpsi),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi - sdpsi, ymax = meanpsi + sdpsi),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Community-level Occupancy")+theme_classic(base_size=16)
 allocc_tolrelplot_2
 
-allocc_tolrelplot_ACFL<-ggplot(aes(tol_rel,meanpsi_ACFL),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.5,fill="grey70")+ylim(c(0,1))
+allocc_ldiplot_2<-ggplot(aes(ldi_3k,meanpsi),data=data.frame(occu_ldi_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi - sdpsi, ymax = meanpsi + sdpsi),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+xlab("Landscape Development Index")+ylab("Community-level Occupancy")+theme_classic(base_size=16)
+allocc_ldiplot_2
+
+
+allocc_tolrelplot_ACFL<-ggplot(aes(tol_rel,meanpsi_ACFL),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Acadian Flycatcher Occupancy")
 allocc_tolrelplot_ACFL
 
-allocc_tolrelplot_HOWA<-ggplot(aes(tol_rel,meanpsi_HOWA),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.5,fill="grey70")+ylim(c(0,1))
+allocc_ldiplot_ACFL<-ggplot(aes(ldi_3k,meanpsi_ACFL),data=data.frame(occu_ldi_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Landscape Development Index")+ylab("Acadian Flycatcher Occupancy")
+allocc_ldiplot_ACFL
+
+allocc_tolrelplot_HOWA<-ggplot(aes(tol_rel,meanpsi_HOWA),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Hooded Warbler Occupancy")
 allocc_tolrelplot_HOWA
+
+allocc_ldiplot_HOWA<-ggplot(aes(ldi_3k,meanpsi_HOWA),data=data.frame(occu_ldi_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Landscape Development Index")+ylab("Hooded Warbler Occupancy")
+allocc_ldiplot_HOWA
+
+allocc_tolrelplot_PIWO<-ggplot(aes(tol_rel,meanpsi_PIWO),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_PIWO - sdpsi_PIWO, ymax = meanpsi_PIWO + sdpsi_PIWO),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Pileated Woodpecker Occupancy")
+allocc_tolrelplot_PIWO
+
+allocc_ldiplot_PIWO<-ggplot(aes(ldi_3k,meanpsi_PIWO),data=data.frame(occu_ldi_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_PIWO - sdpsi_PIWO, ymax = meanpsi_PIWO + sdpsi_PIWO),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Landscape Development Index")+ylab("Pileated Woodpecker Occupancy")
+allocc_ldiplot_PIWO
+
+allocc_tolrelplot_SOSP<-ggplot(aes(tol_rel,meanpsi_SOSP),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_SOSP - sdpsi_SOSP, ymax = meanpsi_SOSP + sdpsi_SOSP),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Song Sparrow Occupancy")
+allocc_tolrelplot_SOSP
+
+allocc_ldiplot_SOSP<-ggplot(aes(ldi_3k,meanpsi_SOSP),data=data.frame(occu_ldi_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi_SOSP - sdpsi_SOSP, ymax = meanpsi_SOSP + sdpsi_SOSP),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Landscape Development Index")+ylab("Song Sparrow Occupancy")
+allocc_ldiplot_SOSP
 
 
 ```
