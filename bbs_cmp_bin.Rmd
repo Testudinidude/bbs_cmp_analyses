@@ -68,7 +68,7 @@ outersect <- function(x, y, ...) {
   setdiff(big.vec, unique(duplicates))
 }
 
-lda_birdcomm<-readRDS("lda_birdcomm.rds")
+lda_birdcomm<-readRDS("G:/NaturalResources/Byer/datasets/BBS/lda_birdcomm.rds")
 
 ```
 
@@ -872,7 +872,7 @@ ggord(lda_birdcomm_full, community, xlim=c(-10,25),ylim = c(-7.5, 12.5),alpha=0,
 
 ```
 
-![](./lda_birdcomm.png)
+![](/G:/NaturalResources/Byer/datasets/BBS/lda_birdcomm.png)
 
 ### co-occurrence networks
 
@@ -953,7 +953,7 @@ visNetwork(nodes = nodes, edges = edges) %>%
 
 ```
 
-![coccur](./coccurrence_birds_zoom.png)
+![coccur](G:/NaturalResources/Byer/datasets/BBS/coccurrence_birds_zoom.png)
 
 ```{r,warning=FALSE,message=FALSE,results='hide'}
 # presence/absence across reservations
@@ -1442,7 +1442,7 @@ sitetimes_surveyhistory_forindexing<-sitetimes %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck<-CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[1]))) %>% 
+  summarise_all(~list(.[1])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1466,7 +1466,7 @@ firstcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_firstcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck<-CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[2]))) %>% 
+  summarise_all(~list(.[2])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1490,7 +1490,7 @@ secondcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_secondcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[3]))) %>% 
+  summarise_all(~list(.[3])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1513,7 +1513,7 @@ thirdcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_thirdcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[4]))) %>% 
+  summarise_all(~list(.[4])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1536,7 +1536,7 @@ fourthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fourthcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[5]))) %>% 
+  summarise_all(~list(.[5])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1559,7 +1559,7 @@ fifthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_fifthcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[6]))) %>% 
+  summarise_all(~list(.[6])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1583,7 +1583,7 @@ sixthcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_sixthcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[7]))) %>% 
+  summarise_all(~list(.[7])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1607,7 +1607,7 @@ seventhcheck_birds<-CMP_bbs_pcap_join_pcaponly_detecthistory_seventhcheck %>%
 
 CMP_bbs_pcap_join_pcaponly_detecthistory_eighthcheck<- CMP_bbs_pcap_join_pcaponly_detecthistory_species %>% group_by(simp_plot) %>% 
   arrange(datecount) %>% 
-  summarise_all(funs(list(.[8]))) %>% 
+  summarise_all(~list(.[8])) %>% 
   unnest(cols = c(date, time_minutes, V1, ACFL, ALFL, AMCR, AMGO, 
                   AMKE, AMRE, AMRO, AMWO, BADO, BAEA, BANS, BAOR, BARS, BCCH, 
                   BEKI, BGGN, BHCO, BHVI, BLJA, BOBO, BRCR, BRTH, BTNW, BWHA, 
@@ -1919,7 +1919,7 @@ out.ms.null <- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.null)
-ppc.out.ms.null <- ppcOcc(out.ms.null, 'chi-squared', group = 1)
+ppc.out.ms.null <- ppcOcc(out.ms.null, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.null)
 
 ```
@@ -1940,7 +1940,7 @@ out.ms.nullobs <- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.nullobs)
-ppc.out.ms.nullobs <- ppcOcc(out.ms.nullobs, 'chi-squared', group = 1)
+ppc.out.ms.nullobs <- ppcOcc(out.ms.nullobs, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.nullobs)
 
 ```
@@ -1963,7 +1963,7 @@ out.ms.det.day <- msPGOcc(occ.formula = occ_null,
 
 
 summary(out.ms.det.day)
-ppc.out.ms.det.day <- ppcOcc(out.ms.det.day, 'chi-squared', group = 1)
+ppc.out.ms.det.day <- ppcOcc(out.ms.det.day, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.day)
 
 
@@ -1988,7 +1988,7 @@ out.ms.detobs.day <- msPGOcc(occ.formula = occ_null,
 
 
 summary(out.ms.detobs.day)
-ppc.out.ms.detobs.day <- ppcOcc(out.ms.detobs.day, 'chi-squared', group = 1)
+ppc.out.ms.detobs.day <- ppcOcc(out.ms.detobs.day, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.day)
 
 ```
@@ -2009,7 +2009,7 @@ out.ms.det.daytod <- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.daytod)
-ppc.out.ms.det.daytod <- ppcOcc(out.ms.det.daytod, 'chi-squared', group = 1)
+ppc.out.ms.det.daytod <- ppcOcc(out.ms.det.daytod, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.daytod)
 ```
 
@@ -2029,7 +2029,7 @@ out.ms.detobs.daytod <- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.daytod)
-ppc.out.ms.detobs.daytod <- ppcOcc(out.ms.detobs.daytod, 'chi-squared', group = 1)
+ppc.out.ms.detobs.daytod <- ppcOcc(out.ms.detobs.daytod, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.daytod)
 
 
@@ -2051,7 +2051,7 @@ out.ms.det.daytodquad<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.daytodquad)
-ppc.out.ms.det.daytodquad <- ppcOcc(out.ms.det.daytodquad, 'chi-squared', group = 1)
+ppc.out.ms.det.daytodquad <- ppcOcc(out.ms.det.daytodquad, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.daytodquad)
 ```
 
@@ -2071,7 +2071,7 @@ out.ms.detobs.daytodquad<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.daytodquad)
-ppc.out.ms.detobs.daytodquad <- ppcOcc(out.ms.detobs.daytodquad, 'chi-squared', group = 1)
+ppc.out.ms.detobs.daytodquad <- ppcOcc(out.ms.detobs.daytodquad, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.daytodquad)
 ```
 
@@ -2092,7 +2092,7 @@ out.ms.det.season<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.season)
-ppc.out.ms.det.season <- ppcOcc(out.ms.det.season, 'chi-squared', group = 1)
+ppc.out.ms.det.season <- ppcOcc(out.ms.det.season, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.season)
 ```
 
@@ -2112,7 +2112,7 @@ out.ms.detobs.season<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.season)
-ppc.out.ms.detobs.season <- ppcOcc(out.ms.detobs.season, 'chi-squared', group = 1)
+ppc.out.ms.detobs.season <- ppcOcc(out.ms.detobs.season, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.season)
 ```
 
@@ -2132,7 +2132,7 @@ out.ms.det.dayyearseason<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.dayyearseason)
-ppc.out.ms.det.dayyearseason <- ppcOcc(out.ms.det.dayyearseason, 'chi-squared', group = 1)
+ppc.out.ms.det.dayyearseason <- ppcOcc(out.ms.det.dayyearseason, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.dayyearseason)
 ```
 
@@ -2152,7 +2152,7 @@ out.ms.detobs.dayyearseason<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.dayyearseason)
-ppc.out.ms.detobs.dayyearseason <- ppcOcc(out.ms.detobs.dayyearseason, 'chi-squared', group = 1)
+ppc.out.ms.detobs.dayyearseason <- ppcOcc(out.ms.detobs.dayyearseason, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.dayyearseason)
 ```
 
@@ -2173,7 +2173,7 @@ out.ms.det.dayyeartodseason<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.dayyeartodseason)
-ppc.out.ms.det.dayyeartodseason <- ppcOcc(out.ms.det.dayyeartodseason, 'chi-squared', group = 1)
+ppc.out.ms.det.dayyeartodseason <- ppcOcc(out.ms.det.dayyeartodseason, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.dayyeartodseason)
 
 ```
@@ -2194,7 +2194,7 @@ out.ms.detobs.dayyeartodseason<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.dayyeartodseason)
-ppc.out.ms.detobs.dayyeartodseason <- ppcOcc(out.ms.detobs.dayyeartodseason, 'chi-squared', group = 1)
+ppc.out.ms.detobs.dayyeartodseason <- ppcOcc(out.ms.detobs.dayyeartodseason, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.dayyeartodseason)
 
 ```
@@ -2216,7 +2216,7 @@ out.ms.det.dayyeartodseasonroad<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.det.dayyeartodseasonroad)
-ppc.out.ms.det.dayyeartodseasonroad <- ppcOcc(out.ms.det.dayyeartodseasonroad, 'chi-squared', group = 1)
+ppc.out.ms.det.dayyeartodseasonroad <- ppcOcc(out.ms.det.dayyeartodseasonroad, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.det.dayyeartodseasonroad)
 
 ```
@@ -2237,7 +2237,7 @@ out.ms.detobs.dayyeartodseasonroad<- msPGOcc(occ.formula = occ_null,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.detobs.dayyeartodseasonroad)
-ppc.out.ms.detobs.dayyeartodseasonroad <- ppcOcc(out.ms.detobs.dayyeartodseasonroad, 'chi-squared', group = 1)
+ppc.out.ms.detobs.dayyeartodseasonroad <- ppcOcc(out.ms.detobs.dayyeartodseasonroad, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.detobs.dayyeartodseasonroad)
 
 ```
@@ -2296,7 +2296,7 @@ out.ms.vibifq <- msPGOcc(occ.formula = occ_vibifq,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.vibifq)
-ppc.out.ms.vibifq <- ppcOcc(out.ms.vibifq, 'chi-squared', group = 1)
+ppc.out.ms.vibifq <- ppcOcc(out.ms.vibifq, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.vibifq)
 
 waicOcc(out.ms.vibifq)
@@ -2321,7 +2321,7 @@ out.ms.vibifqnotrees <- msPGOcc(occ.formula = occ_vibifqnotrees,
 
 
 summary(out.ms.vibifqnotrees)
-ppc.out.ms.vibifqnotrees <- ppcOcc(out.ms.vibifqnotrees, 'chi-squared', group = 1)
+ppc.out.ms.vibifqnotrees <- ppcOcc(out.ms.vibifqnotrees, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.vibifqnotrees)
 
 waicOcc(out.ms.vibifqnotrees)
@@ -2344,7 +2344,7 @@ out.ms.fqi <- msPGOcc(occ.formula = occ_fqi,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.fqi)
-ppc.out.ms.fqi <- ppcOcc(out.ms.fqi, 'chi-squared', group = 1)
+ppc.out.ms.fqi <- ppcOcc(out.ms.fqi, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.fqi)
 
 waicOcc(out.ms.fqi)
@@ -2370,7 +2370,7 @@ out.ms.rdaveg <- msPGOcc(occ.formula = occ_rdaveg,
 
 
 summary(out.ms.rdaveg)
-ppc.out.ms.rdaveg <- ppcOcc(out.ms.rdaveg, 'chi-squared', group = 1)
+ppc.out.ms.rdaveg <- ppcOcc(out.ms.rdaveg, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.rdaveg)
 
 waicOcc(out.ms.rdaveg)
@@ -2395,12 +2395,12 @@ out.ms.fulllandveg <- msPGOcc(occ.formula = occ_fullrda,
 
 
 summary(out.ms.fulllandveg)
-ppc.out.ms.fulllandveg <- ppcOcc(out.ms.fulllandveg, 'chi-squared', group = 1)
+ppc.out.ms.fulllandveg <- ppcOcc(out.ms.fulllandveg, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.fulllandveg)
 
 waicOcc(out.ms.fulllandveg)
 
-write_rds(out.ms.fulllandveg,"out.ms.fulllandveg.rds")
+write_rds(out.ms.fulllandveg,"G:/NaturalResources/Byer/datasets/BBS/out.ms.fulllandveg.rds")
 
 ```
 
@@ -2420,7 +2420,7 @@ out.ms.structure <- msPGOcc(occ.formula = occ_structure,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.structure)
-ppc.out.ms.structure <- ppcOcc(out.ms.structure, 'chi-squared', group = 1)
+ppc.out.ms.structure <- ppcOcc(out.ms.structure, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.structure)
 waicOcc(out.ms.structure)
 ```
@@ -2441,7 +2441,7 @@ out.ms.tolerance<- msPGOcc(occ.formula = occ_tol,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.tolerance)
-ppc.out.ms.tolerance <- ppcOcc(out.ms.tolerance, 'chi-squared', group = 1)
+ppc.out.ms.tolerance <- ppcOcc(out.ms.tolerance, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.tolerance)
 waicOcc(out.ms.tolerance)
 ```
@@ -2462,7 +2462,7 @@ out.ms.allveg <- msPGOcc(occ.formula = occ_allveg,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.allveg)
-ppc.out.ms.allveg <- ppcOcc(out.ms.allveg, 'chi-squared', group = 1)
+ppc.out.ms.allveg <- ppcOcc(out.ms.allveg, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.allveg)
 
 waicOcc(out.ms.allveg)
@@ -2485,7 +2485,7 @@ out.ms.land <- msPGOcc(occ.formula = occ_allland,
                   n.thin = n.thin, 
                   n.chains = n.chains)
 summary(out.ms.land)
-ppc.out.ms.land <- ppcOcc(out.ms.land, 'chi-squared', group = 1)
+ppc.out.ms.land <- ppcOcc(out.ms.land, 'freeman-tukey', group = 1)
 summary(ppc.out.ms.land)
 waicOcc(out.ms.land)
 
@@ -2507,7 +2507,7 @@ AICc_table$wAIC<-c(waicOcc(out.ms.nullobs)[[3]],waicOcc(out.ms.allveg)[[3]],waic
 
 ```{r, echo = FALSE,out.width="200%"}
 
-AICc_table<-read.csv("wAIC_table_revise_1027.csv")
+AICc_table<-read.csv("G:/NaturalResources/Byer/datasets/BBS/wAIC_table_revise_1027.csv")
 AICc_table_2<-AICc_table[,-1]
 
 knitr::kable(AICc_table_2[order(AICc_table_2$wAIC),])
@@ -2515,15 +2515,107 @@ knitr::kable(AICc_table_2[order(AICc_table_2$wAIC),])
 
 So, the top model is the model with a mix of land cover and vegetation covariates!
 
-Now, we plot based on this top model.
+Now, we plot based on this top model - after running it for a bit longer.
+
+```{r, eval = FALSE}
+out.ms.fulllandveg_2 <- msPGOcc(occ.formula = occ_fullrda, 
+                  det.formula = det_best, 
+                  data = bbs_occobject, 
+                  inits = ms.inits, 
+                  n.samples = 200000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 4, 
+                  verbose = TRUE, 
+                  n.report = 190000, 
+                  n.burn = 10000,
+                  n.thin = 100, 
+                  n.chains = n.chains)
 
 
+summary(out.ms.fulllandveg_2)
+ppc.out.ms.fulllandveg_2 <- ppcOcc(out.ms.fulllandveg_2, 'freeman-tukey', group = 1)
+summary(ppc.out.ms.fulllandveg_2)
+
+waicOcc(out.ms.fulllandveg_2)
+
+write_rds(out.ms.fulllandveg_2,"G:/NaturalResources/Byer/datasets/BBS/out.ms.fulllandveg_2.rds")
+
+
+
+```
+
+This top model still has some diagnostics of adequate, but marginal fit, so we will run this without the random effect - and for fewer surveys.
+
+```{r, eval = FALSE}
+sitechecks_road_detcov_three<-sitechecks_road_detcov[,1:3]
+
+
+
+bbs_occobject_three$det.covs$dist_road<-sitechecks_road_detcov_three
+
+
+
+out.ms.fulllandveg_three <- msPGOcc(occ.formula = occ_fullrda, 
+                  det.formula = det_dayyeartodseasonroad, 
+                  data = bbs_occobject_three, 
+                  inits = ms.inits, 
+                  n.samples = 20000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 19000, 
+                  n.burn = 1000,
+                  n.thin = 50, 
+                  n.chains = n.chains)
+
+
+summary(out.ms.fulllandveg_three)
+ppc.out.ms.fulllandveg_three <- ppcOcc(out.ms.fulllandveg_three, 'freeman-tukey', group = 1)
+summary(ppc.out.ms.fulllandveg_three)
+
+waicOcc(out.ms.fulllandveg_three)
+
+write_rds(out.ms.fulllandveg_three,"G:/NaturalResources/Byer/datasets/BBS/out.ms.fulllandveg_three.rds")
+
+```
+
+We can also run a model with the "no tree" analog of tol_rel.
+
+```{r, eval = FALSE}
+
+occ_fullrda_notree<-~scale(tol_rel_notree) + scale(svp) + scale(dicot) + scale(cyper) + 
+    scale(ldi_3k) + scale(developed)
+out.ms.fulllandveg_three_notree <- msPGOcc(occ.formula = occ_fullrda_notree, 
+                  det.formula = det_dayyeartodseasonroad, 
+                  data = bbs_occobject_three, 
+                  inits = ms.inits, 
+                  n.samples = 20000, 
+                  priors = ms.priors, 
+                  n.omp.threads = 1, 
+                  verbose = TRUE, 
+                  n.report = 1000, 
+                  n.burn = 1000,
+                  n.thin = 50, 
+                  n.chains = n.chains)
+
+
+summary(out.ms.fulllandveg_three_notree)
+ppc.out.ms.fulllandveg_three_notree <- ppcOcc(out.ms.fulllandveg_three_notree, 'freeman-tukey', group = 1)
+summary(ppc.out.ms.fulllandveg_three_notree)
+
+waicOcc(out.ms.fulllandveg_three_notree)
+
+write_rds(out.ms.fulllandveg_three_notree,"G:/NaturalResources/Byer/datasets/BBS/out.ms.fulllandveg_three_notree.rds")
+
+```
+
+This did not effect overall community-level estimates, and we are likely safe to proceed with the original model.
 
 ### plot single covariate effects
 
 ```{r,eval=FALSE,echo=FALSE}
 
-out.ms.fulllandveg<-read_rds("out.ms.fulllandveg.rds")
+out.ms.fulllandveg_2<-read_rds("G:/NaturalResources/Byer/datasets/BBS/out.ms.fulllandveg_2.rds")
 
 X.0.dat<-as.data.frame(bbs_occobject$occ.covs) %>%
   dplyr::select(tol_rel, svp, dicot, cyper, ldi_3k, developed)
@@ -2552,9 +2644,9 @@ occu_ldi_newdata <- data.frame(int=1,tol_rel = mean(bbs_occobject$occ.covs[, 17]
                                   ldi_3k=ldi.pred,
                                   developed=mean(bbs_occobject$occ.covs[, 23]) / sd(bbs_occobject$occ.covs[, 23]))
 
-tolrelpred<-predict(out.ms.fulllandveg,as.matrix(occu_tolrel_newdata))
+tolrelpred<-predict(out.ms.fulllandveg_2,as.matrix(occu_tolrel_newdata))
 
-ldipred<-predict(out.ms.fulllandveg,as.matrix(occu_ldi_newdata))
+ldipred<-predict(out.ms.fulllandveg_2,as.matrix(occu_ldi_newdata))
 
 
 occu_tolrel_newdata$meanpsi<-apply(tolrelpred$psi.0.samples[,,], 3, mean)
@@ -2604,8 +2696,8 @@ write_rds(occu_tolrel_newdata,"occu_tolrel_newdata.rds")
 
 ```{r,echo=FALSE}
 
-occu_ldi_newdata<-read_rds("occu_ldi_newdata.rds")
-occu_tolrel_newdata<-read_rds("occu_tolrel_newdata.rds")
+occu_ldi_newdata<-read_rds("G:/NaturalResources/Byer/datasets/BBS/occu_ldi_newdata.rds")
+occu_tolrel_newdata<-read_rds("G:/NaturalResources/Byer/datasets/BBS/occu_tolrel_newdata.rds")
 
 
 allocc_tolrelplot_2<-ggplot(aes(tol_rel,meanpsi),data=data.frame(occu_tolrel_newdata))+geom_line()+geom_ribbon(aes(ymin = meanpsi - sdpsi, ymax = meanpsi + sdpsi),alpha=0.5,fill="grey70")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Community-level Occupancy")+theme_classic(base_size=16)
@@ -2640,15 +2732,21 @@ allocc_ldiplot_SOSP<-ggplot(aes(ldi_3k,meanpsi_SOSP),data=data.frame(occu_ldi_ne
 allocc_ldiplot_SOSP
 
 
+
+allocc_ldiplot_allspp<-ggplot(aes(ldi_3k,meanpsi_SOSP),data=data.frame(occu_ldi_newdata))+geom_line(col="tan4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_SOSP - sdpsi_SOSP, ymax = meanpsi_SOSP + sdpsi_SOSP),alpha=0.1,fill="tan2")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Landscape Development Index")+ylab("Occupancy")+geom_line(aes(ldi_3k,meanpsi_ACFL),col="springgreen4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.1,fill="springgreen2")+geom_line(aes(ldi_3k,meanpsi_PIWO),col="red4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_PIWO - sdpsi_PIWO, ymax = meanpsi_PIWO + sdpsi_PIWO),alpha=0.1,fill="red2")+geom_line(aes(ldi_3k,meanpsi_HOWA),col="gold4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.1,fill="gold2")
+
+allocc_ldiplot_allspp
+
+
+allocc_tolrelplot_allspp<-ggplot(aes(tol_rel,meanpsi_SOSP),data=data.frame(occu_tolrel_newdata))+geom_line(col="tan4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_SOSP - sdpsi_SOSP, ymax = meanpsi_SOSP + sdpsi_SOSP),alpha=0.1,fill="tan2")+ylim(c(-0.1,1.1))+theme_classic(base_size=16)+xlab("Relative cover of tolerant plants")+ylab("Occupancy")+geom_line(aes(tol_rel,meanpsi_ACFL),col="springgreen4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_ACFL - sdpsi_ACFL, ymax = meanpsi_ACFL + sdpsi_ACFL),alpha=0.1,fill="springgreen2")+geom_line(aes(tol_rel,meanpsi_PIWO),col="red4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_PIWO - sdpsi_PIWO, ymax = meanpsi_PIWO + sdpsi_PIWO),alpha=0.1,fill="red2")+geom_line(aes(tol_rel,meanpsi_HOWA),col="gold4",size=1.5)+geom_ribbon(aes(ymin = meanpsi_HOWA - sdpsi_HOWA, ymax = meanpsi_HOWA + sdpsi_HOWA),alpha=0.1,fill="gold2")
+
+allocc_tolrelplot_allspp
+
 ```
 
 
-### plotting using an RShiny app
-
-While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: <https://testudinidude.shinyapps.io/bbsapp/>.
-
 ```{r, echo = FALSE, eval = FALSE}
-fitted.ms.fulllandveg<-fitted(out.ms.fulllandveg)
+fitted.ms.fulllandveg<-fitted(out.ms.fulllandveg_2)
 
 sppnames<-c("ACFL","ALFL","AMCR","AMGO","AMKE","AMRE","AMRO","AMWO","BADO","BAEA",
 "BANS","BAOR","BARS","BCCH","BEKI","BGGN","BHCO","BHVI","BLJA","BOBO","BRCR","BRTH","BTNW","BWHA",
@@ -2721,16 +2819,132 @@ saveRDS(sppnames,"U:/DataAnalysis/BreedingBirds/sppnames.Rdata")
 idwrasters_detection<-list()
 
 
-p.samples<-(fitted.ms.fulllandveg$p.samples[,,,1])
+p.samples<-(fitted.ms.fulllandveg$p.samples[,,,8])
+
+p.samples.full<-apply(fitted.ms.fulllandveg$p.samples,c(1,2,3),FUN=mean,na.rm=TRUE)
+
+`
+respoly<-readOGR("G:/NaturalResources/Byer/DataAnalysis/bbs_cmp_analyses/bbsapp/CMPboundaries.shp")
 
 
 for(i in 1:length(sppnames)){
   plot.dat.ms <- data.frame(x = bbs_occobject$coords[,1], 
                             y = bbs_occobject$coords[,2], 
-                            mean.psi = apply(p.samples[,i,], 2, mean))
+                            mean.psi = apply(p.samples.full[,i,], 2, mean))
   
   dsp <- SpatialPoints(plot.dat.ms[,1:2])
   dsp <- SpatialPointsDataFrame(dsp, plot.dat.ms)
+  crs(dsp)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  j <- sample(nrow(dsp), 0.2 * nrow(dsp))
+  tst <- dsp[j,]
+  trn <- dsp[-j,]
+opt <- optim(c(8, .5), f1, test=tst, train=trn)
+  # define groups for mapping
+  cuts <- c(0,0.25,0.75,1.0)
+  # set up a palette of interpolated colors
+  blues <- colorRampPalette(c('yellow', 'orange', 'blue', 'dark blue'))
+  spplot(dsp, 'mean.psi', cuts=cuts, col.regions=blues(5), pch=20, cex=2)
+  v <- voronoi(dsp)
+   
+  ch <- chull(plot.dat.ms[,1:2])
+  coords <- plot.dat.ms[c(ch, ch[1]), 1:2]  # closed polygon
+  
+  plot(plot.dat.ms[,1:2], pch=19)
+  lines(coords, col="red")
+  
+ 
+  
+  #sp_poly <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID=1)))
+  # set coordinate reference system with SpatialPolygons(..., proj4string=CRS(...))
+  # e.g. CRS("+proj=longlat +datum=WGS84")
+  #sp_poly_df <- SpatialPolygonsDataFrame(sp_poly, data=data.frame(ID=1))
+  #writeOGR(sp_poly_df, "chull", layer="chull", driver="ESRI Shapefile")
+  
+  vca <- intersect(v, respoly)
+  spplot(vca, 'mean.psi', col.regions=rev(get_col_regions()))
+  r <- raster(respoly, res=500)
+  crs(r)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  crs(vca)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  vr <- rasterize(vca, r, 'mean.psi')
+  crs(vr)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  plot(vr)
+  points(dsp)
+  
+  writeRaster(vr,filename = paste0("G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/",sppnames[i],"_detectmeanp_fulllandveg_origbbslocs_meandet.asc"),overwrite=TRUE)
+  
+  fitmax <- gstat::gstat(formula = mean.psi ~ 1, data = dsp, nmax = opt$par[1], set = list(idp = opt$par[2]))
+  maxint <- raster::interpolate(r, model=fitmax)
+  crs(maxint)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  plot(maxint, col=rev(heat.colors(255)))
+  plot(vr, add=TRUE)
+  r2 <- crop(maxint, extent(respoly))
+  r3 <- mask(r2, respoly)
+  idwrasters_detection[[i]]<-r3
+  writeRaster(maxint,filename = paste0("G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/",sppnames[i],"_detectmeanp_fulllandveg_origbbslocs_nni_opt_meandet.asc"),overwrite=TRUE)
+  
+}
+
+saveRDS(idwrasters_detection,"G:/NaturalResources/Byer/datasets/BBS/idwrasters_fulllandveg_detection_meandet.Rdata")
+
+
+```
+
+### prediction overall all PCAP
+
+```{r, eval = FALSE}
+pcap_full<-read.csv("G:/NaturalResources/Byer/datasets/BBS/pcap_2nd_sample_database.csv",header=T)
+
+names(pcap_full)[names(pcap_full) == 'Plot.ID'] <- 'simp_plot'
+
+pcap_full_land<-left_join(pcap_full,pcap_1styear_landscape,by="simp_plot")
+
+
+tol_rel = ((pcap_full_land$tolerant_rel_cov_metric_value - mean(bbs_occobject$occ.covs[,17]))/sd(bbs_occobject$occ.covs[,17]))
+svp = ((pcap_full_land$svp_metric_value - mean(bbs_occobject$occ.covs[,9]))/sd(bbs_occobject$occ.covs[,9]))
+dicot = ((pcap_full_land$dicot_metric_value - mean(bbs_occobject$occ.covs[, 5])) / sd(bbs_occobject$occ.covs[, 5]))
+cyper = ((pcap_full_land$cyperaceae_metric_value - mean(bbs_occobject$occ.covs[, 4])) / sd(bbs_occobject$occ.covs[, 4]))
+ldi_3k = ((as.numeric(pcap_full_land$ldi_3k) - mean(bbs_occobject$occ.covs[, 34])) / sd(bbs_occobject$occ.covs[, 34]))
+developed = ((as.numeric(pcap_full_land$developed) - mean(bbs_occobject$occ.covs[, 23])) / sd(bbs_occobject$occ.covs[, 23]))
+
+predict_data<-data.frame(int = 1, tol_rel = tol_rel, svp = svp, dicot = dicot, cyper = cyper, ldi_3k = ldi_3k, developed = developed)
+
+fullpcappred<-predict(out.ms.fulllandveg_2,as.matrix(predict_data))
+
+RMSE <- function(observed, predicted) {
+  sqrt(mean((predicted - observed)^2, na.rm=TRUE))
+}
+f1 <- function(x, test, train) {
+  nmx <- x[1]
+  idp <- x[2]
+  if (nmx < 1) return(Inf)
+  if (idp < .001) return(Inf)
+  m <- gstat(formula=mean.psi~1, locations=train, nmax=nmx, set=list(idp=idp))
+  p <- predict(m, newdata=test, debug.level=0)$var1.pred
+  RMSE(test$mean.psi, p)
+}
+
+set.seed(12345)
+
+
+respoly<-readOGR("G:/NaturalResources/Byer/DataAnalysis/bbs_cmp_analyses/bbsapp/CMPboundaries.shp")
+
+fullpcaprasters<-list()
+
+for(i in 1:length(sppnames)){
+  plot.dat.ms <- data.frame(x = pcap_full_land$xcoord, 
+                            y = pcap_full_land$ycoord, 
+                            mean.psi = apply(fullpcappred$psi.0.samples[,i,], 2, mean),
+                            sd.psi = apply(fullpcappred$psi.0.samples[,i,], 2, sd),
+                            stringsAsFactors = FALSE)
+  
+  dsp <- SpatialPoints(plot.dat.ms[,1:2])
+  dsp <- SpatialPointsDataFrame(dsp, plot.dat.ms)
+  crs(dsp)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  j <- sample(nrow(dsp), 0.2 * nrow(dsp))
+  tst <- dsp[j,]
+  trn <- dsp[-j,]
+opt <- optim(c(8, .5), f1, test=tst, train=trn)
+  
   # define groups for mapping
   cuts <- c(0,0.25,0.75,1.0)
   # set up a palette of interpolated colors
@@ -2746,37 +2960,69 @@ for(i in 1:length(sppnames)){
   
  
   
-  sp_poly <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID=1)))
+  #sp_poly <- SpatialPolygons(list(Polygons(list(Polygon(coords)), ID=1)))
   # set coordinate reference system with SpatialPolygons(..., proj4string=CRS(...))
   # e.g. CRS("+proj=longlat +datum=WGS84")
-  sp_poly_df <- SpatialPolygonsDataFrame(sp_poly, data=data.frame(ID=1))
+  #sp_poly_df <- SpatialPolygonsDataFrame(sp_poly, data=data.frame(ID=1))
   #writeOGR(sp_poly_df, "chull", layer="chull", driver="ESRI Shapefile")
   
-  vca <- intersect(v, sp_poly_df)
+  vca <- intersect(v, respoly)
   spplot(vca, 'mean.psi', col.regions=rev(get_col_regions()))
-  r <- raster(sp_poly_df, res=5000)
-#  crs(r)<-"+proj=longlat +datum=NAD83"
+  r <- raster(respoly, res=500)
+  crs(r)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  crs(vca)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
   vr <- rasterize(vca, r, 'mean.psi')
+  crs(vr)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
   plot(vr)
   points(dsp)
   
-  writeRaster(vr,filename = paste0("U:/DataAnalysis/BreedingBirds/",sppnames[i],"_detectmeanp_fulllandveg_origbbslocs.asc"),overwrite=TRUE)
+  writeRaster(vr,filename = paste0("G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/",sppnames[i],"_occmeanpsi_fulllandveg_2_fullpcap.asc"),overwrite=TRUE)
+
   
-  fitmax <- gstat::gstat(formula = mean.psi ~ 1, data = dsp, nmax = 4, set = list(idp = .5))
-  maxint <- raster::interpolate(r, model=fitmax, ext=vr)
-  plot(maxint, col=rev(heat.colors(255)), ext=vr)
+  
+  fitmax <- gstat::gstat(formula = mean.psi ~ 1, data = dsp, nmax = opt$par[1], set = list(idp = opt$par[2]))
+  maxint <- raster::interpolate(r, model=fitmax)
+  crs(maxint)<-"+proj=lcc +lat_0=39.6666666666667 +lon_0=-82.5 +lat_1=41.7 +lat_2=40.4333333333333 +x_0=600000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs"
+  plot(maxint, col=rev(heat.colors(255)))
   plot(vr, add=TRUE)
-  r2 <- crop(maxint, extent(sp_poly_df))
-  r3 <- mask(r2, sp_poly_df)
-  idwrasters_detection[[i]]<-r3
-  writeRaster(maxint,filename = paste0("U:/DataAnalysis/BreedingBirds/",sppnames[i],"_detectmeanp_fulllandveg_idw_origbbslocs_rev.asc"),overwrite=TRUE)
+  r2 <- crop(maxint, extent(respoly))
+  r3 <- mask(r2, respoly)
+  fullpcaprasters[[i]]<-r3
+  writeRaster(r3,filename = paste0("G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/",sppnames[i],"_occmeanpsi_fulllandveg_2_fullpcap_nni_opt_clipped.asc"),overwrite=TRUE)
   
 }
 
-saveRDS(idwrasters_detection,"U:/DataAnalysis/BreedingBirds/idwrasters_fulllandveg_detection.Rdata")
+saveRDS(fullpcaprasters,"G:/NaturalResources/Byer/datasets/BBS/fullpcaprasters_occ.Rdata")
+
+
+
+#first import all files in a single folder as a list 
+#rastlist <- list.files(path = "G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/nni_opt/clipped", pattern='.asc$', 
+#all.files=TRUE, full.names=TRUE)
+
+#import all raster files in folder using lapply
+#allrasters <- lapply(rastlist, raster)
+
+#to check the index numbers of all imported raster list elements
+#allrasters
+
+#call single raster element
+#allrasters[[1]]
+
+#to run a function on an individual raster e.g., plot 
+#plot(allrasters[[1]])
+
+#saveRDS(allrasters,"G:/NaturalResources/Byer/datasets/BBS/rasterpredictions/nni_opt/clipped/nnirasters_fullpcap.RData")
 
 
 ```
+
+
+
+
+### plotting using an RShiny app
+
+While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: <https://testudinidude.shinyapps.io/bbsapp/>.
 
 ```{r, echo = FALSE,out.height="400%",out.width="150%"}
 knitr::include_app("https://testudinidude.shinyapps.io/bbsapp/")
@@ -2788,11 +3034,11 @@ Finally, we can also run some plots depicting covariate effects for each species
 
 ```{r,fig.height=12,warning=FALSE,echo=FALSE,message=FALSE}
 #options(max.print=1000000)
-#sink("outmsfulllandveg_90percent_rev.txt")
-#print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
+#sink("outmsfulllandveg_2_90percent_rev.txt")
+#print(summary(out.ms.fulllandveg_2,level="species",quantiles=c(0.05,0.5,0.95)))
 #sink() 
 
-covars<-read.csv("outmsfulllandveg_90percent_rev_sig.csv",header=T)
+covars<-read.csv("G:/NaturalResources/Byer/datasets/BBS/outmsfulllandveg_2_90percent_rev_sig.csv",header=T)
 
 
 covars_ldi<-subset(covars,covars$Covariate=="ldi_3k")
@@ -2899,7 +3145,7 @@ ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorba
 #print(summary(out.ms.fulllandveg,level="species",quantiles=c(0.05,0.5,0.95)))
 #sink() 
 
-covars<-read.csv("outmsfulllandveg_90percent_rev_sig.csv",header=T)
+covars<-read.csv("G:/NaturalResources/Byer/datasets/BBS/outmsfulllandveg_2_90percent_rev_sig.csv",header=T)
 
 covars_foc<-covars[covars$Species %in% c("AcadianFlycatcher","HoodedWarbler","PileatedWoodpecker","SongSparrow"),]
 

@@ -5,9 +5,9 @@ library(ggplot2)
 library(RColorBrewer)
 library(rgdal)
 library(broom)
-idwrasters_occ<-readRDS("idwrasters_fulllandveg.Rdata")
+idwrasters_occ<-readRDS("fullpcaprasters_occ.Rdata")
 
-idwrasters_det<-readRDS("idwrasters_fulllandveg_detection.Rdata")
+idwrasters_det<-readRDS("idwrasters_fulllandveg_detection_meandet.Rdata")
 
 occdetlist<-list(idwrasters_occ,idwrasters_det)
 
@@ -67,7 +67,7 @@ server <- shinyServer(function(input, output){
   output$raster <- renderPlot({
     dataset <- datasetInput()
     ggplot()+geom_raster(data=dataset,aes(x=x,y=y,fill=var1.pred))+
-      scale_fill_gradient(low="red",high="green")+
+      scale_fill_gradient(low="red",high="green",limits=c(0,1))+
       geom_polygon(data=cmpboundaries_fortified,aes( x = long, y = lat,group=group),fill=NA, color="black")+
       theme_minimal(base_size=16)+ggtitle("Interpolated estimates")
   })
@@ -84,10 +84,14 @@ server <- shinyServer(function(input, output){
     #r3 <- as.data.frame(mask(r2, dataset3),xy=TRUE)
     reservation_fortified<-tidy(dataset3)
     ggplot()+geom_raster(data=r2,aes(x=x,y=y,fill=var1.pred))+
-      scale_fill_gradient(low="red",high="green")+
+      scale_fill_gradient(low="red",high="green",limits=c(0,1))+
       geom_polygon(data=dataset3,aes( x = long, y = lat,group=group),fill=NA, color="black")+
       theme_minimal(base_size=16)+ggtitle(input$reservation)
   })
 })
 
 shinyApp(ui = ui, server = server)
+
+
+#code graveyard
+#scale_fill_gradient(low="red",high="green")
