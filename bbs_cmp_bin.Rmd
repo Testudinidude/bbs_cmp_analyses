@@ -3017,9 +3017,6 @@ saveRDS(fullpcaprasters,"G:/NaturalResources/Byer/datasets/BBS/fullpcaprasters_o
 
 ```
 
-
-
-
 ### plotting using an RShiny app
 
 While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: <https://testudinidude.shinyapps.io/bbsapp/>.
@@ -3241,6 +3238,5 @@ spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
 covars_cyper$spporder<-spp_cyperorder
 
 ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
-
 
 ```
