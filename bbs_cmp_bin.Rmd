@@ -3017,9 +3017,6 @@ saveRDS(fullpcaprasters,"G:/NaturalResources/Byer/datasets/BBS/fullpcaprasters_o
 
 ```
 
-
-
-
 ### plotting using an RShiny app
 
 While the below RShiny app should be fairly easy to use within the current webpage, you may also access this via: <https://testudinidude.shinyapps.io/bbsapp/>.
