@@ -1,5 +1,5 @@
 ---
-title: "Breeding Bird Surveys - Cleveland Metroparks (new and improved, with landscape covariates!)"
+title: "Breeding Bird Surveys - Cleveland Metroparks"
 author: "Nathan W. Byer"
 date: "`r Sys.Date()`"
 output: 
@@ -2889,18 +2889,6 @@ spp_dicotorder<-factor(covars_dicot$Species,levels=covars_dicot$Species)
 covars_dicot$spporder<-spp_dicotorder
 
 ggplot(aes(x=Mean,y=spp_dicotorder),data=covars_dicot)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of dicots")
-
-
-covars_cyper<-subset(covars_foc,covars_foc$Covariate=="cyper")
-
-covars_cyper<-covars_cyper[order(covars_cyper$Mean),]
-
-
-spp_cyperorder<-factor(covars_cyper$Species,levels=covars_cyper$Species)
-
-covars_cyper$spporder<-spp_cyperorder
-
-ggplot(aes(x=Mean,y=spp_cyperorder),data=covars_cyper)+geom_point()+geom_errorbarh(aes(xmin=X5.,xmax=X95.))+theme_classic(base_size=12)+xlab("Covariate estimate")+ylab("Cover of sedges")
 
 
 ```
