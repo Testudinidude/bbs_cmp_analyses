@@ -34,3 +34,7 @@ occu_tolrel_newdata.rds
 out.ms.fulllandveg.rds
 bbs_cmp_bin_dist50.Rmd
 figures
+bbs_covariatequery_12122022.sql
+bbs_subcanopy_canopy_dens.sql
+bbs_subcanopy_canopy_dens_sum.sql
+bbs_subcanopy_canopy_dom.sql

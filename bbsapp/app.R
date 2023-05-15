@@ -26,7 +26,7 @@ sppcodetrans<-read.csv("IBP-AOS-LIST21.csv",header=T)
 
 sppcodetrans$SPEC
 
-coefs<-read.csv("outmsfulllandveg_90percent_rev_sig.csv",header=T)
+coefs<-read.csv("outmslandvegrda_2_90percent_sig.csv",header=T)
 
 #coefs_occ<-coefs[coefs$Process=="Occupancy",]
 coefs_noint<-na.omit(coefs[coefs$Covariate!="Intercept",])
